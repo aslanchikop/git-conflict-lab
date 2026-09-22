@@ -258,17 +258,48 @@ func TestResolveTargetDir_Rejections(t *testing.T) {
 	}
 }
 
+// normalizePath returns the canonical long-path form of p: absolute,
+// cleaned, and symlink-resolved when the path exists. GitHub's Windows
+// runners create temp dirs under 8.3 short names (C:\Users\RUNNER~1\...),
+// while the product resolves roots to their long form
+// (C:\Users\runneradmin\...); raw string comparisons between the two
+// forms are invalid, so tests must normalize both sides first.
+func normalizePath(t *testing.T, p string) string {
+	t.Helper()
+	abs := filepath.Clean(p)
+	if !filepath.IsAbs(abs) {
+		var err error
+		abs, err = filepath.Abs(abs)
+		if err != nil {
+			t.Fatalf("cannot absolutize %q: %v", p, err)
+		}
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		// Non-existing path: compare the cleaned absolute form. The
+		// product resolves symlinks only for existing paths as well.
+		return abs
+	}
+	return resolved
+}
+
+// resolveJoin normalizes base (which must exist) and joins elems onto it,
+// producing the expected long-form location for a path that may not exist.
+func resolveJoin(t *testing.T, base string, elems ...string) string {
+	t.Helper()
+	return filepath.Join(append([]string{normalizePath(t, base)}, elems...)...)
+}
+
 func TestResolveTargetDir_HappyPath(t *testing.T) {
 	root := t.TempDir()
 	got, err := ResolveTargetDir(root, "merge-basics")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	want := filepath.Join(root, "merge-basics")
-	if !strings.EqualFold(got, want) {
+	if want := resolveJoin(t, root, "merge-basics"); !strings.EqualFold(normalizePath(t, got), want) {
 		t.Errorf("resolved path = %q, want inside root at %q", got, want)
 	}
-	if !strings.HasPrefix(strings.ToLower(got), strings.ToLower(root)) {
+	if !strings.HasPrefix(strings.ToLower(normalizePath(t, got)), strings.ToLower(normalizePath(t, root))) {
 		t.Errorf("resolved path %q escapes labs root %q", got, root)
 	}
 }
@@ -283,7 +314,7 @@ func TestResolveTargetDir_ExistingEmptyDirAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error for empty existing dir: %v", err)
 	}
-	if !strings.EqualFold(got, dir) {
+	if !strings.EqualFold(normalizePath(t, got), resolveJoin(t, root, "rebase-intro")) {
 		t.Errorf("resolved path = %q, want %q", got, dir)
 	}
 }
@@ -294,7 +325,7 @@ func TestResolveTargetDir_NameExactlyAtLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("64-char name should be valid, got error: %v", err)
 	}
-	if want := filepath.Join(root, strings.Repeat("b", 64)); !strings.EqualFold(got, want) {
+	if want := resolveJoin(t, root, strings.Repeat("b", 64)); !strings.EqualFold(normalizePath(t, got), want) {
 		t.Errorf("resolved path = %q, want %q", got, want)
 	}
 }
@@ -327,7 +358,7 @@ func TestResolveTargetDir_SymlinkedChildEscapesRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("symlinked labs root follows its designation: %v", err)
 	}
-	if !strings.EqualFold(got, ex) {
+	if !strings.EqualFold(normalizePath(t, got), normalizePath(t, ex)) {
 		t.Errorf("resolved path = %q, want %q", got, ex)
 	}
 }
@@ -351,7 +382,7 @@ func TestResolveTargetDir_NestedGitAboveCandidateRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fresh sibling next to a nested repo must resolve: %v", err)
 	}
-	if want := filepath.Join(root, "fresh"); !strings.EqualFold(got, want) {
+	if want := resolveJoin(t, root, "fresh"); !strings.EqualFold(normalizePath(t, got), want) {
 		t.Errorf("resolved path = %q, want %q", got, want)
 	}
 }
@@ -366,7 +397,7 @@ func TestResolveTargetDir_RootGitIsBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("root's own .git must not disqualify, got error: %v", err)
 	}
-	if want := filepath.Join(root, "fresh-exercise"); !strings.EqualFold(got, want) {
+	if want := resolveJoin(t, root, "fresh-exercise"); !strings.EqualFold(normalizePath(t, got), want) {
 		t.Errorf("resolved path = %q, want %q", got, want)
 	}
 }
@@ -387,7 +418,7 @@ func TestResolveTargetDir_UnrelatedNestedWorkTreeRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("repo above the labs root must be ignored, got error: %v", err)
 	}
-	if want := filepath.Join(labsRoot, "isolated"); !strings.EqualFold(got, want) {
+	if want := resolveJoin(t, labsRoot, "isolated"); !strings.EqualFold(normalizePath(t, got), want) {
 		t.Errorf("resolved path = %q, want %q", got, want)
 	}
 }
