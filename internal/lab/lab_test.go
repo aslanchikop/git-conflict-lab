@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -460,6 +461,22 @@ func TestResolveTargetDir_UnrelatedNestedWorkTreeRejected(t *testing.T) {
 	}
 	if want := resolveJoin(t, labsRoot, "isolated"); !strings.EqualFold(normalizePath(t, got), want) {
 		t.Errorf("resolved path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveTargetDir_VolumeRootLabsRoot(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("volume-root drive-relative path malformation is Windows-only; on POSIX the root \"/\" already joins cleanly")
+	}
+	got, err := ResolveTargetDir("C:\\", "exercise")
+	if err != nil {
+		t.Fatalf("ResolveTargetDir(C:\\, exercise): %v", err)
+	}
+	if cleaned := filepath.Clean(got); !strings.EqualFold(cleaned, `C:\exercise`) {
+		t.Errorf("resolved path = %q, want C:\\exercise (well-formed, not drive-relative C:exercise)", got)
+	}
+	if strings.EqualFold(got, `C:exercise`) || strings.HasSuffix(got, "C:exercise") {
+		t.Errorf("resolved path %q is the malformed drive-relative form", got)
 	}
 }
 

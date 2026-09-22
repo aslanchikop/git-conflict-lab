@@ -158,7 +158,11 @@ func ResolveTargetDir(labsRoot, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: cannot resolve labs root: %v", ErrUnsafeLocation, err)
 	}
-	resolvedRoot = strings.TrimSuffix(resolvedRoot, string(filepath.Separator))
+	// A volume root ("C:\", "/") must keep its trailing separator: trimming
+	// it would turn Join("C:", name) into the drive-relative form "C:name".
+	if len(resolvedRoot) > 3 {
+		resolvedRoot = strings.TrimSuffix(resolvedRoot, string(filepath.Separator))
+	}
 
 	// (e) Ancestor symlink containment. If any component of the candidate's
 	// parent chain (up to and including resolvedRoot) is a symlink or reparse
