@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -85,16 +87,41 @@ func TestStartUnknownExercise(t *testing.T) {
 	}
 }
 
-func TestStartKnownExerciseNotAvailable(t *testing.T) {
-	_, stderr, code := runArgs("start", "merge-basic")
-	if code != ExitNotImplemented {
-		t.Fatalf("start merge-basic: exit = %d, want %d", code, ExitNotImplemented)
+func TestStartGeneratesExercise(t *testing.T) {
+	labs := t.TempDir()
+	t.Setenv(labsRootEnv, labs)
+
+	stdout, _, code := runArgs("start", "merge-basic")
+	if code != ExitOK {
+		t.Fatalf("start merge-basic: exit = %d, want %d", code, ExitOK)
 	}
-	if !strings.Contains(stderr, "Milestone B") {
-		t.Errorf("stderr = %q, want Milestone B notice", stderr)
+	if !strings.Contains(stdout, "Exercise ready") {
+		t.Errorf("stdout = %q, want ready notice", stdout)
+	}
+	created := filepath.Join(labs, "merge-basic")
+	if info, err := os.Stat(created); err != nil || !info.IsDir() {
+		t.Fatalf("exercise dir %s missing: %v", created, err)
+	}
+	if _, err := os.Stat(filepath.Join(created, ".git")); err != nil {
+		t.Errorf("generated dir is not a Git repository: %v", err)
 	}
 }
 
+func TestStartTwiceFailsSafe(t *testing.T) {
+	t.Setenv(labsRootEnv, t.TempDir())
+
+	stdout, _, code := runArgs("start", "merge-basic")
+	if code != ExitOK {
+		t.Fatalf("first start: exit = %d, want %d (stdout=%q)", code, ExitOK, stdout)
+	}
+	_, stderr, code := runArgs("start", "merge-basic")
+	if code == ExitOK {
+		t.Fatalf("second start: exit = %d, want non-zero", code)
+	}
+	if !strings.Contains(stderr, "already exists") {
+		t.Errorf("stderr = %q, want existing-dir notice", stderr)
+	}
+}
 func TestCheckNotAvailable(t *testing.T) {
 	_, stderr, code := runArgs("check")
 	if code != ExitNotImplemented {
@@ -194,7 +221,10 @@ func TestRunMapsExitCodes(t *testing.T) {
 	if got := Run([]string{"nope"}); got != ExitUsage {
 		t.Errorf("Run(nope) = %d, want %d", got, ExitUsage)
 	}
-	if got := Run([]string{"start", "merge-basic"}); got != ExitNotImplemented {
-		t.Errorf("Run(start merge-basic) = %d, want %d", got, ExitNotImplemented)
+	// start is functional now; verify the real path with an isolated labs
+	// root so the user's home is never touched by tests.
+	t.Setenv(labsRootEnv, t.TempDir())
+	if got := Run([]string{"start", "merge-basic"}); got != ExitOK {
+		t.Errorf("Run(start merge-basic) = %d, want %d", got, ExitOK)
 	}
 }

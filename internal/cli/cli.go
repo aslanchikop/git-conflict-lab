@@ -5,10 +5,13 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/aslanchikop/git-conflict-lab/internal/exercise"
 	"github.com/aslanchikop/git-conflict-lab/internal/lab"
@@ -36,7 +39,7 @@ Usage:
 
 Commands:
   list     Show the exercises available in the embedded catalog.
-  start    Create an isolated exercise repository to work in. (Milestone B)
+  start    Create an isolated exercise repository to work in.
   check    Verify your resolution inside an exercise repository. (Milestone C)
   hint     Reveal the next hint for an exercise. (Milestone D)
   version  Show the tool version.
@@ -50,7 +53,7 @@ Example session (after Milestone B):
   # ... use real Git to resolve the conflict ...
   git-conflict-lab check
 
-Today 'list', 'version' and 'help' are fully functional; the remaining
+Today 'list', 'start', 'version' and 'help' are fully functional; the remaining
 commands are reserved and report the milestone that delivers them.
 `
 
@@ -112,8 +115,32 @@ func runList(w, errW io.Writer) int {
 	return ExitOK
 }
 
-// runStart validates arguments and the exercise id. Directory generation
-// itself arrives in Milestone B.
+// labsRootEnv is the environment variable that overrides the default
+// labs root. It keeps tests and user setups isolated.
+const labsRootEnv = "GIT_CONFLICT_LAB_LABS"
+
+// defaultLabsRoot resolves the labs root: the override variable first,
+// then a fixed directory under the user home. The directory is created
+// on demand. It is a package variable so tests can inject a fake.
+var defaultLabsRoot = func() (string, error) {
+	if v := os.Getenv(labsRootEnv); v != "" {
+		return filepath.Abs(v)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "git-conflict-lab-labs"), nil
+}
+
+// startGenerator generates the exercise repository. It is a package
+// variable so tests can inject failures.
+var startGenerator = func(ctx context.Context, labsRoot, id string) (string, error) {
+	return lab.Generate(ctx, labsRoot, id)
+}
+
+// runStart validates arguments and the exercise id, then generates the
+// exercise repository.
 func runStart(w, errW io.Writer, args []string) int {
 	if len(args) != 1 {
 		fmt.Fprintln(errW, "Usage: git-conflict-lab start <exercise-id>")
@@ -123,7 +150,50 @@ func runStart(w, errW io.Writer, args []string) int {
 	if err := requireExercise(args[0]); err != nil {
 		return handleUnknownExercise(errW, err)
 	}
-	return reportNotAvailable(errW, "start", "B")
+	labsRoot, err := defaultLabsRoot()
+	if err != nil {
+		fmt.Fprintf(errW, "Error: cannot determine the labs directory: %v\n", err)
+		return ExitFailure
+	}
+	if err := ensureLabsRoot(labsRoot); err != nil {
+		fmt.Fprintf(errW, "Error: %v\n", err)
+		return ExitFailure
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	created, err := startGenerator(ctx, labsRoot, args[0])
+	if err != nil {
+		if errors.Is(err, lab.ErrTargetExists) || errors.Is(err, lab.ErrTargetNotEmpty) {
+			fmt.Fprintf(errW, "That exercise directory already exists, so nothing was changed.\n")
+			fmt.Fprintf(errW, "Remove it yourself if you want a fresh copy, then run the command again.\n")
+			return ExitFailure
+		}
+		fmt.Fprintf(errW, "Error: %v\n", err)
+		return ExitFailure
+	}
+	fmt.Fprintf(w, "Exercise ready: %s\n", created)
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Next steps:")
+	fmt.Fprintf(w, "  cd %s\n", filepath.Base(created))
+	fmt.Fprintln(w, "  git log --oneline --all")
+	fmt.Fprintln(w, "  git merge feature/login   # this will conflict, on purpose")
+	fmt.Fprintln(w, "  git-conflict-lab check")
+	return ExitOK
+}
+
+// ensureLabsRoot creates the labs root on demand.
+func ensureLabsRoot(labsRoot string) error {
+	info, err := os.Stat(labsRoot)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("labs root %s exists but is not a directory", labsRoot)
+		}
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	return os.MkdirAll(labsRoot, 0o755)
 }
 
 // runCheck optionally validates an exercise id. Verification arrives in
