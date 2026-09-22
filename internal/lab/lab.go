@@ -112,9 +112,9 @@ func sameDir(a, b string) bool {
 // a git repository - only directories strictly between the candidate and
 // the labs root are checked for unrelated nested work trees.
 func ResolveTargetDir(labsRoot, name string) (string, error) {
-// TOCTOU boundary: filesystem state can change between validation here
-// and directory creation when Milestone B generation lands; the generation
-// step must re-verify the resolved path at creation time.
+	// TOCTOU boundary: filesystem state can change between validation here
+	// and directory creation when Milestone B generation lands; the generation
+	// step must re-verify the resolved path at creation time.
 	// (a) Empty or whitespace-only name.
 	if strings.TrimSpace(name) == "" {
 		return "", ErrEmptyName
