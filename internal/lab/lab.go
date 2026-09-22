@@ -13,13 +13,14 @@ import (
 
 // Sentinel errors returned by ResolveTargetDir. Use errors.Is to classify.
 var (
-	ErrEmptyName      = errors.New("exercise name is empty")
-	ErrInvalidName    = errors.New("exercise name contains invalid characters or format")
-	ErrReservedName   = errors.New("exercise name is a reserved Windows device name")
-	ErrTargetExists   = errors.New("target path already exists as a file or symlink")
-	ErrTargetNotEmpty = errors.New("target directory already exists and is not empty")
-	ErrTraversal      = errors.New("target path escapes the labs root via symlink")
-	ErrUnsafeLocation = errors.New("target location is unsafe")
+	ErrEmptyName       = errors.New("exercise name is empty")
+	ErrInvalidName     = errors.New("exercise name contains invalid characters or format")
+	ErrReservedName    = errors.New("exercise name is a reserved Windows device name")
+	ErrReservedGitName = errors.New("exercise name is reserved by Git/version-control systems")
+	ErrTargetExists    = errors.New("target path already exists as a file or symlink")
+	ErrTargetNotEmpty  = errors.New("target directory already exists and is not empty")
+	ErrTraversal       = errors.New("target path escapes the labs root via symlink")
+	ErrUnsafeLocation  = errors.New("target location is unsafe")
 )
 
 // NotAvailableError reports a CLI command that exists on the command surface
@@ -53,6 +54,13 @@ func isReservedDeviceName(name string) bool {
 		return n >= 1 && n <= 31
 	}
 	return false
+}
+
+// isReservedVCSName reports whether name collides with a version-control
+// metadata directory (".git", ".hg"). Comparison is case-insensitive: a
+// Windows filesystem treats ".GIT" and ".git" as the same directory.
+func isReservedVCSName(name string) bool {
+	return strings.EqualFold(name, ".git") || strings.EqualFold(name, ".hg")
 }
 
 func containsControlChar(s string) bool {
@@ -117,6 +125,12 @@ func ResolveTargetDir(labsRoot, name string) (string, error) {
 		return "", ErrInvalidName
 	case name == "." || name == "..":
 		return "", ErrInvalidName
+	case isReservedVCSName(name):
+		// ".git"/".hg" collide with version-control metadata directories.
+		// Reject them here, before any path-join or existing-target logic,
+		// so a repo-like labs root yields the dedicated error instead of
+		// ErrTargetNotEmpty.
+		return "", fmt.Errorf("%w: %q", ErrReservedGitName, name)
 	case name != strings.TrimSpace(name):
 		return "", ErrInvalidName
 	case len(name) > 64:

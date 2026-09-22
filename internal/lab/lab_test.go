@@ -141,6 +141,46 @@ func TestResolveTargetDir_Rejections(t *testing.T) {
 			want:    ErrReservedName,
 		},
 		{
+			name:    "reserved VCS name .git on fresh root",
+			dirName: ".git",
+			want:    ErrReservedGitName,
+			labs: func(t *testing.T) string {
+				return t.TempDir()
+			},
+		},
+		{
+			name:    "reserved VCS name .GIT case-insensitive",
+			dirName: ".GIT",
+			want:    ErrReservedGitName,
+			labs: func(t *testing.T) string {
+				return t.TempDir()
+			},
+		},
+		{
+			name:    "reserved VCS name .hg on fresh root",
+			dirName: ".hg",
+			want:    ErrReservedGitName,
+			labs: func(t *testing.T) string {
+				return t.TempDir()
+			},
+		},
+		{
+			name: "reserved VCS name .git takes precedence over non-empty target",
+			labs: func(t *testing.T) string {
+				root := t.TempDir()
+				gitDir := filepath.Join(root, ".git")
+				if err := os.MkdirAll(gitDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				return root
+			},
+			dirName: ".git",
+			want:    ErrReservedGitName,
+		},
+		{
 			name:    "non-reserved com32",
 			dirName: "COM32",
 			want:    nil,
