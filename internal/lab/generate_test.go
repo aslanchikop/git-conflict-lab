@@ -46,17 +46,22 @@ func TestGenerateRealMergeConflict(t *testing.T) {
 	ctx := context.Background()
 
 	out, err := gitx.Run(ctx, repo, "merge", "feature/login")
+	var exitErr *gitx.ExitError
+	isExit := asExitError(err, &exitErr)
 	if err == nil {
 		t.Fatalf("merge unexpectedly succeeded; output:\n%s", out)
 	}
-	var exitErr *gitx.ExitError
-	if !asExitError(err, &exitErr) {
+	if !isExit {
 		t.Fatalf("merge error is not an ExitError: %v", err)
 	}
+	t.Logf("merge exit=%d output:\n%s", exitErr.ExitCode, out)
 
-	// A real merge conflict leaves MERGE_HEAD behind.
+	// Diagnostics for unexpected failures: show the actual merge output
+	// and repository state so CI failures are debuggable.
 	if _, statErr := os.Stat(filepath.Join(repo, ".git", "MERGE_HEAD")); statErr != nil {
-		t.Errorf("MERGE_HEAD missing after failed merge: %v", statErr)
+		st, _ := gitx.Run(ctx, repo, "status", "--porcelain")
+		t.Fatalf("MERGE_HEAD missing after failed merge (exit=%d): merge output:\n%s\nstatus:\n%s",
+			exitErr.ExitCode, out, st)
 	}
 
 	// The conflicted file carries conflict markers now.
