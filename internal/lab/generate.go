@@ -86,8 +86,8 @@ type State struct {
 	CheckerVersion int    `json:"checker_version"`
 }
 
-// stateDir is the manifest location inside a generated repository.
-const stateDir = ".git-conflict-lab"
+// StateDir is the manifest location inside a generated repository.
+const StateDir = ".git-conflict-lab"
 
 // Generate creates a new, isolated exercise repository for the exercise
 // with the given name under labsRoot. It returns the absolute path of the
@@ -138,7 +138,7 @@ func Generate(ctx context.Context, labsRoot, name string) (string, error) {
 // `git status`. The file is repository-local and untracked by design.
 func excludeManifestDir(repo string) error {
 	excludePath := filepath.Join(repo, ".git", "info", "exclude")
-	line := stateDir + "/"
+	line := StateDir + "/"
 	var content string
 	if data, err := os.ReadFile(excludePath); err == nil {
 		content = string(data)
@@ -306,10 +306,10 @@ func writeState(ctx context.Context, labsRoot, repo string) error {
 	if err != nil {
 		return fmt.Errorf("cannot marshal state: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Join(repo, stateDir), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(repo, StateDir), 0o755); err != nil {
 		return fmt.Errorf("cannot create state dir: %w", err)
 	}
-	return writeFileSync(filepath.Join(repo, stateDir, "state.json"), data)
+	return writeFileSync(filepath.Join(repo, StateDir, "state.json"), data)
 }
 
 // trimSpace is a tiny helper to keep the sha helper readable.

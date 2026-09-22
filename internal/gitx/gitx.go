@@ -109,6 +109,7 @@ func overrideEnv(base, overrides []string) []string {
 	}
 	return append(kept, overrides...)
 }
+
 // Run executes git with the given arguments in dir and returns combined
 // stdout+stderr output. Arguments must be non-empty strings.
 func Run(ctx context.Context, dir string, args ...string) (string, error) {

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 0.1.0-alpha.3
+
+### Added
+
+- `check` is live: semantic verification of the merge-basic resolution (no unfinished operations, no unresolved index entries, no conflict markers, both sides preserved, resolution committed, clean worktree) with actionable failure diagnostics.
+- `internal/check`: read-only checker package; the repository is provably unmodified by a check run (test-asserted).
 ## [Unreleased] - 0.1.0-alpha.2
 
 ### Added

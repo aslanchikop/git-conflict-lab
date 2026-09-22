@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/aslanchikop/git-conflict-lab/internal/exercise"
+	"github.com/aslanchikop/git-conflict-lab/internal/gitx"
 )
 
 // runArgs executes run with fresh stdout/stderr buffers and returns both
@@ -107,6 +109,69 @@ func TestStartGeneratesExercise(t *testing.T) {
 	}
 }
 
+func TestCheckEndToEnd(t *testing.T) {
+	labs := t.TempDir()
+	t.Setenv(labsRootEnv, labs)
+
+	stdout, _, code := runArgs("start", "merge-basic")
+	if code != ExitOK {
+		t.Fatalf("start: exit = %d, want %d (stdout=%q)", code, ExitOK, stdout)
+	}
+	repo := filepath.Join(labs, "merge-basic")
+	ctx := context.Background()
+	mergeEnv := []string{
+		"GIT_AUTHOR_NAME=Git Conflict Lab",
+		"GIT_AUTHOR_EMAIL=git-conflict-lab@localhost",
+		"GIT_COMMITTER_NAME=Git Conflict Lab",
+		"GIT_COMMITTER_EMAIL=git-conflict-lab@localhost",
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "merge", "feature/login"); err == nil {
+		t.Fatal("expected merge to conflict")
+	}
+
+	// Unresolved merge: check must fail with exit 1.
+	t.Chdir(repo)
+	_, stderr, code := runArgs("check")
+	if code != ExitFailure {
+		t.Fatalf("check on unresolved merge: exit = %d, want %d", code, ExitFailure)
+	}
+	if !strings.Contains(stderr, "Not solved yet") {
+		t.Errorf("stderr = %q, want actionable failure", stderr)
+	}
+
+	// Correct resolution: both requirements, committed.
+	resolved := "package auth\n\nfunc Login(user, password string) bool {\n\tif len(user) < 3 {\n\t\treturn false\n\t}\n\treturn len(password) >= 8\n}\n"
+	if err := os.WriteFile(filepath.Join(repo, "login.go"), []byte(resolved), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "add", "login.go"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "commit", "-m", "merge: combine both login requirements"); err != nil {
+		t.Fatal(err)
+	}
+	stdout2, _, code2 := runArgs("check")
+	if code2 != ExitOK {
+		t.Fatalf("check after correct resolution: exit = %d, want %d\nstdout=%q", code2, ExitOK, stdout2)
+	}
+	if !strings.Contains(stdout2, "Solved") {
+		t.Errorf("stdout = %q, want encouraging success", stdout2)
+	}
+}
+
+func TestCheckOutsideExerciseFails(t *testing.T) {
+	t.Setenv(labsRootEnv, t.TempDir())
+	tmp := t.TempDir()
+	t.Chdir(tmp)
+	_, stderr, code := runArgs("check")
+	if code != ExitFailure {
+		t.Fatalf("check outside exercise: exit = %d, want %d", code, ExitFailure)
+	}
+	if !strings.Contains(stderr, "git-conflict-lab start") {
+		t.Errorf("stderr = %q, want guidance to run start", stderr)
+	}
+}
+
 func TestStartTwiceFailsSafe(t *testing.T) {
 	t.Setenv(labsRootEnv, t.TempDir())
 
@@ -123,12 +188,16 @@ func TestStartTwiceFailsSafe(t *testing.T) {
 	}
 }
 func TestCheckNotAvailable(t *testing.T) {
+	// check is live since Milestone C: outside an exercise directory it
+	// must fail with actionable guidance instead of the old exit-4.
+	tmp := t.TempDir()
+	t.Chdir(tmp)
 	_, stderr, code := runArgs("check")
-	if code != ExitNotImplemented {
-		t.Fatalf("check: exit = %d, want %d", code, ExitNotImplemented)
+	if code != ExitFailure {
+		t.Fatalf("check outside an exercise: exit = %d, want %d", code, ExitFailure)
 	}
-	if !strings.Contains(stderr, "Milestone C") {
-		t.Errorf("stderr = %q, want Milestone C notice", stderr)
+	if !strings.Contains(stderr, "git-conflict-lab start") {
+		t.Errorf("stderr = %q, want guidance", stderr)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/aslanchikop/git-conflict-lab/internal/check"
 	"github.com/aslanchikop/git-conflict-lab/internal/exercise"
 	"github.com/aslanchikop/git-conflict-lab/internal/lab"
 )
@@ -40,7 +41,7 @@ Usage:
 Commands:
   list     Show the exercises available in the embedded catalog.
   start    Create an isolated exercise repository to work in.
-  check    Verify your resolution inside an exercise repository. (Milestone C)
+  check    Verify your resolution inside an exercise repository.
   hint     Reveal the next hint for an exercise. (Milestone D)
   version  Show the tool version.
   help     Show this help text.
@@ -53,7 +54,7 @@ Example session (after Milestone B):
   # ... use real Git to resolve the conflict ...
   git-conflict-lab check
 
-Today 'list', 'start', 'version' and 'help' are fully functional; the remaining
+Today 'list', 'start', 'check', 'version' and 'help' are fully functional; the remaining
 commands are reserved and report the milestone that delivers them.
 `
 
@@ -196,22 +197,53 @@ func ensureLabsRoot(labsRoot string) error {
 	return os.MkdirAll(labsRoot, 0o755)
 }
 
-// runCheck optionally validates an exercise id. Verification arrives in
-// Milestone C.
+// runCheck verifies the exercise in the current working directory. An
+// optional exercise id must match the generated exercise if given.
 func runCheck(w, errW io.Writer, args []string) int {
 	switch len(args) {
-	case 0:
-		// No id yet: the checker itself lands in Milestone C.
-	case 1:
-		if err := requireExercise(args[0]); err != nil {
-			return handleUnknownExercise(errW, err)
-		}
+	case 0, 1:
 	default:
 		fmt.Fprintln(errW, "Usage: git-conflict-lab check [exercise-id]")
 		return ExitUsage
 	}
-	return reportNotAvailable(errW, "check", "C")
+	if len(args) == 1 {
+		if err := requireExercise(args[0]); err != nil {
+			return handleUnknownExercise(errW, err)
+		}
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(errW, "Error: cannot determine the current directory: %v\n", err)
+		return ExitFailure
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	result, err := checkFn(ctx, wd)
+	if err != nil {
+		fmt.Fprintf(errW, "Error: %v\n", err)
+		return ExitFailure
+	}
+	for _, c := range result.Checks {
+		if c.Passed {
+			fmt.Fprintf(w, "ok   %s - %s\n", c.Name, c.Detail)
+		} else {
+			fmt.Fprintf(errW, "FAIL %s - %s\n", c.Name, c.Detail)
+		}
+	}
+	if !result.Passed {
+		fmt.Fprintln(errW, "")
+		fmt.Fprintln(errW, "Not solved yet. Work through the FAIL lines above, then run git-conflict-lab check again.")
+		return ExitFailure
+	}
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Solved. You resolved a real merge conflict: both sides were preserved,")
+	fmt.Fprintln(w, "the result was committed on main, and the worktree is clean.")
+	return ExitOK
 }
+
+// checkFn is the checker entry point; a package variable so tests can
+// inject behavior.
+var checkFn = check.Check
 
 // runHint validates the exercise id. Hint delivery arrives in Milestone D.
 func runHint(w, errW io.Writer, args []string) int {

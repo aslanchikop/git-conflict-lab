@@ -148,7 +148,7 @@ func TestGenerateIgnoresHostileGlobalConfig(t *testing.T) {
 }
 func TestGenerateWritesStateManifest(t *testing.T) {
 	repo := generateInto(t)
-	data, err := os.ReadFile(filepath.Join(repo, stateDir, "state.json"))
+	data, err := os.ReadFile(filepath.Join(repo, StateDir, "state.json"))
 	if err != nil {
 		t.Fatalf("state manifest missing: %v", err)
 	}
