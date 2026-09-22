@@ -144,6 +144,55 @@ func TestOneSideLostFails(t *testing.T) {
 	}
 }
 
+func TestSneakyBranchResolutionFails(t *testing.T) {
+	repo := genExercise(t)
+	ctx := context.Background()
+	_, _ = gitx.RunWithEnv(ctx, repo, mergeEnv, "merge", "feature/login")
+	resolved := "package auth\n\nfunc Login(user, password string) bool {\n\tif len(user) < 3 {\n\t\treturn false\n\t}\n\treturn len(password) >= 8\n}\n"
+	if err := os.WriteFile(filepath.Join(repo, "login.go"), []byte(resolved), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "add", "login.go"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "commit", "-m", "sneaky: resolve on a side branch"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "checkout", "-b", "sneaky"); err != nil {
+		t.Fatal(err)
+	}
+	res, _ := Check(context.Background(), repo)
+	if res.Passed {
+		t.Fatal("resolution on a side branch must not pass")
+	}
+	if !hasFailedCheck(res, "resolution-landed") {
+		t.Errorf("expected resolution-landed to fail; results:\n%s", dumpResults(res))
+	}
+}
+
+func TestCommentOnlyHackFails(t *testing.T) {
+	repo := genExercise(t)
+	ctx := context.Background()
+	_, _ = gitx.RunWithEnv(ctx, repo, mergeEnv, "merge", "feature/login")
+	// Keep main's side verbatim, satisfy the heuristic only via a comment.
+	hack := "package auth\n\n// user 3 password 8\nfunc Login(user, password string) bool {\n\tif user == \"\" || password == \"\" {\n\t\treturn false\n\t}\n\treturn len(password) >= 8\n}\n"
+	if err := os.WriteFile(filepath.Join(repo, "login.go"), []byte(hack), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "add", "login.go"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "commit", "-m", "hack: main side plus comment"); err != nil {
+		t.Fatal(err)
+	}
+	res, _ := Check(context.Background(), repo)
+	if res.Passed {
+		t.Fatal("comment-only satisfaction must not pass")
+	}
+	if !hasFailedCheck(res, "both-sides-preserved") {
+		t.Errorf("expected both-sides-preserved to fail; results:\n%s", dumpResults(res))
+	}
+}
 func TestCheckOutsideRepoFailsFriendly(t *testing.T) {
 	dir := t.TempDir()
 	res, err := Check(context.Background(), dir)

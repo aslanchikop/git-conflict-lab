@@ -152,8 +152,13 @@ func Check(ctx context.Context, repoDir string) (Result, error) {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		// The advisory manifest dir is tool-owned; ignore it here.
-		if strings.Contains(line, lab.StateDir) {
+		// The advisory manifest dir is tool-owned; ignore only that exact
+		// path (never arbitrary paths that merely contain the name).
+		path := line
+		if len(path) > 3 {
+			path = path[3:]
+		}
+		if path == lab.StateDir || strings.HasPrefix(path, lab.StateDir+"/") {
 			continue
 		}
 		dirty = append(dirty, line)
@@ -193,6 +198,7 @@ func dirbyTrim(in []string) []string {
 // This is an honest, documented heuristic for merge-basic only; a static
 // checker cannot prove arbitrary programs correct.
 func mergedResolution(content string) (string, bool) {
+	content = stripGoLineComments(content)
 	need := []string{"password", "8", "user", "3"}
 	for _, n := range need {
 		if !strings.Contains(content, n) {
@@ -216,23 +222,46 @@ func mergedResolution(content string) (string, bool) {
 // equivalent hand-made commit passes, which is acceptable because the
 // learning objective is the resolution, not the ceremony.
 func checkLanding(ctx context.Context, repoDir string, state *lab.State) (string, bool) {
-	// HEAD must descend from the recorded main commit.
-	if _, err := gitx.Run(ctx, repoDir, "merge-base", "--is-ancestor", state.MainSHA, "HEAD"); err != nil {
-		return "HEAD is not descended from the exercise's starting main commit; work on the main branch of this exercise repository.", false
-	}
-	// Current file must differ from both parents' versions.
-	cur, err := os.ReadFile(filepath.Join(repoDir, filepath.FromSlash(state.ConflictFile)))
+	// The resolution must be on main itself, not just any descendant
+	// branch: HEAD must be refs/heads/main (symbolic check catches side
+	// branches that point at the same commit as main).
+	sym, err := gitx.Run(ctx, repoDir, "symbolic-ref", "--short", "HEAD")
 	if err != nil {
-		return "cannot read " + state.ConflictFile + ": " + err.Error(), false
+		return "HEAD is detached; switch to main with git switch main.", false
 	}
+	if strings.TrimSpace(sym) != "main" {
+		return "you are on branch " + strings.TrimSpace(sym) + ". The resolution must be committed on main; switch with git switch main or merge your branch into main.", false
+	}
+	// main must descend from the exercise's starting commit.
+	if _, err := gitx.Run(ctx, repoDir, "merge-base", "--is-ancestor", state.MainSHA, "refs/heads/main"); err != nil {
+		return "main has diverged from the exercise's starting commit; regenerate the exercise if this was unintentional.", false
+	}
+	// The file at main's tip must differ from both pre-merge versions.
 	for _, ref := range []string{state.MainSHA, state.FeatureSHA} {
 		old, err := gitx.Run(ctx, repoDir, "show", ref+":"+state.ConflictFile)
 		if err != nil {
 			return "cannot compare against " + ref + ": " + err.Error(), false
 		}
-		if strings.EqualFold(strings.TrimSpace(old), strings.TrimSpace(string(cur))) {
-			return "login.go is identical to one pre-merge side (" + ref + "); both sides must be combined, not copied.", false
+		cur, err := gitx.Run(ctx, repoDir, "show", "refs/heads/main:"+state.ConflictFile)
+		if err != nil {
+			return "cannot read " + state.ConflictFile + " on main: " + err.Error(), false
+		}
+		if strings.EqualFold(strings.TrimSpace(old), strings.TrimSpace(cur)) {
+			return "login.go on main is identical to one pre-merge side (" + ref + "); both sides must be combined, not copied.", false
 		}
 	}
 	return "a committed resolution on main was found and differs from both pre-merge versions.", true
+}
+
+// stripGoLineComments removes // line comments (best effort, stdlib-only,
+// string-literal naive but safe for this exercise's file shape) so the
+// both-sides heuristic cannot be satisfied by prose inside comments.
+func stripGoLineComments(content string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if idx := strings.Index(line, "//"); idx >= 0 {
+			lines[i] = line[:idx]
+		}
+	}
+	return strings.Join(lines, "\n")
 }
