@@ -381,7 +381,7 @@ func TestResolveTargetDir_SymlinkedChildEscapesRoot(t *testing.T) {
 	// expressed as labsRoot+name (names reject separators), so two assertions
 	// cover the escape surface:
 	//  1) resolving the symlink itself as the name must fail (never follow);
-	//  2) with labsRoot = the symlink, the root designation follows it — a
+	//  2) with labsRoot = the symlink, the root designation follows it - a
 	// pre-existing candidate resolves inside the real location, proving
 	// containment is enforced against resolved (real) roots.
 	sym := filepath.Join(root, "sym")
@@ -482,7 +482,7 @@ func TestResolveTargetDir_VolumeRootLabsRoot(t *testing.T) {
 
 func TestNotAvailableError_Message(t *testing.T) {
 	err := &NotAvailableError{Command: "generate", Milestone: "B"}
-	want := "generate is not implemented yet — it arrives in Milestone B."
+	want := "generate is not implemented yet - it arrives in Milestone B."
 	if err.Error() != want {
 		t.Errorf("Error() = %q, want %q", err.Error(), want)
 	}

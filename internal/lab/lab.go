@@ -31,7 +31,7 @@ type NotAvailableError struct {
 }
 
 func (e *NotAvailableError) Error() string {
-	return fmt.Sprintf("%s is not implemented yet — it arrives in Milestone %s.", e.Command, e.Milestone)
+	return fmt.Sprintf("%s is not implemented yet - it arrives in Milestone %s.", e.Command, e.Milestone)
 }
 
 func isReservedDeviceName(name string) bool {
@@ -109,9 +109,12 @@ func sameDir(a, b string) bool {
 //
 // labsRoot is the designated directory that will contain exercise
 // directories; it must already exist. The labs root itself may live inside
-// a git repository — only directories strictly between the candidate and
+// a git repository - only directories strictly between the candidate and
 // the labs root are checked for unrelated nested work trees.
 func ResolveTargetDir(labsRoot, name string) (string, error) {
+// TOCTOU boundary: filesystem state can change between validation here
+// and directory creation when Milestone B generation lands; the generation
+// step must re-verify the resolved path at creation time.
 	// (a) Empty or whitespace-only name.
 	if strings.TrimSpace(name) == "" {
 		return "", ErrEmptyName
@@ -215,7 +218,7 @@ func ResolveTargetDir(labsRoot, name string) (string, error) {
 
 	// (g) Walk up from the candidate's parent to resolvedRoot: reject if an
 	// unrelated git work tree sits in between. The labs root's own .git does
-	// not disqualify — the root is the designated labs area.
+	// not disqualify - the root is the designated labs area.
 	for dir := parent; ; dir = filepath.Dir(dir) {
 		if dirContainsGitEntry(dir) && !sameDir(dir, resolvedRoot) {
 			return "", fmt.Errorf("%w: target is inside an unrelated Git work tree", ErrUnsafeLocation)

@@ -15,5 +15,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `internal/exercise`: embedded, validated exercise catalog shipping its first exercise, `merge-basic` (easy).
 - `internal/lab`: filesystem safety boundary - target directory resolution with reserved-name, symlink, traversal and nested-repository protections.
 - Continuous integration on Ubuntu and Windows: go vet and go test on every push and pull request targeting `main`.
-
-[Unreleased]: https://github.com/aslanchikop/git-conflict-lab/compare/v0.0.0...HEAD

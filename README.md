@@ -3,6 +3,8 @@
 A free, open-source, offline CLI training utility for practicing real Git conflict resolution in safely generated, isolated repositories.
 
 > Status: Milestone A (foundation). The CLI skeleton, exercise catalog and safety groundwork are in place; exercise generation, checking and hints arrive in upcoming milestones tracked in GitHub Issues.
+>
+> Platforms: Windows is verified locally and in CI; Linux is verified in CI; macOS support is planned but not yet verified.
 
 ## Prerequisites
 

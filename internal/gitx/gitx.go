@@ -71,6 +71,9 @@ func Run(ctx context.Context, dir string, args ...string) (string, error) {
 				Output:   string(output),
 			}
 		}
+		if errors.Is(runCtx.Err(), context.Canceled) {
+			return string(output), fmt.Errorf("git %s was canceled: %w", strings.Join(args, " "), runCtx.Err())
+		}
 		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 			return string(output), fmt.Errorf("git %s timed out after %s: %w", strings.Join(args, " "), defaultTimeout, runCtx.Err())
 		}
