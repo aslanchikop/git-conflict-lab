@@ -155,10 +155,14 @@ func runHint(w, errW io.Writer, args []string) int {
 	return reportNotAvailable(errW, "hint", "D")
 }
 
+// lookupExercise resolves an exercise id through the catalog. It is a
+// package variable so tests can inject lookup failures.
+var lookupExercise = exercise.Get
+
 // requireExercise resolves an exercise id, normalizing lookup errors so
 // callers only need to test for exercise.ErrNotFound.
 func requireExercise(id string) error {
-	_, err := exercise.Get(id)
+	_, err := lookupExercise(id)
 	return err
 }
 

@@ -2,8 +2,11 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/aslanchikop/git-conflict-lab/internal/exercise"
 )
 
 // runArgs executes run with fresh stdout/stderr buffers and returns both
@@ -162,6 +165,25 @@ func TestUnknownCommand(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "git-conflict-lab help") {
 		t.Errorf("stderr = %q, want help hint", stderr)
+	}
+}
+
+func TestLookupFailureReturnsExitFailure(t *testing.T) {
+	// Inject a runtime lookup failure that is NOT ErrNotFound: the CLI must
+	// classify it as a runtime failure (exit 1) with the error message,
+	// not as a usage error (exit 2).
+	original := lookupExercise
+	lookupExercise = func(id string) (exercise.Spec, error) {
+		return exercise.Spec{}, fmt.Errorf("catalog backend offline (injected)")
+	}
+	t.Cleanup(func() { lookupExercise = original })
+
+	_, stderr, code := runArgs("start", "merge-basic")
+	if code != ExitFailure {
+		t.Fatalf("start with failed lookup: exit = %d, want %d", code, ExitFailure)
+	}
+	if !strings.Contains(stderr, "Error: catalog backend offline (injected)") {
+		t.Errorf("stderr = %q, want injected error message", stderr)
 	}
 }
 
