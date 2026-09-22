@@ -1,4 +1,4 @@
-﻿# Binaries
+# Binaries
 /git-conflict-lab
 /git-conflict-lab.exe
 /dist/
@@ -11,3 +11,6 @@ coverage.txt
 # Editor / OS
 .DS_Store
 Thumbs.db
+
+# Local scratch (agent workspace)
+.openclaw/
