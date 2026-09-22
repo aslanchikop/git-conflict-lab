@@ -45,7 +45,16 @@ func TestGenerateRealMergeConflict(t *testing.T) {
 	repo := generateInto(t)
 	ctx := context.Background()
 
-	out, err := gitx.Run(ctx, repo, "merge", "feature/login")
+	// git merge validates the committer identity before merging, so the
+	// merge (like any commit-creating operation) needs one. Users run this
+	// with their own identity; tests pin the generator identity.
+	mergeEnv := []string{
+		"GIT_AUTHOR_NAME=Git Conflict Lab",
+		"GIT_AUTHOR_EMAIL=git-conflict-lab@localhost",
+		"GIT_COMMITTER_NAME=Git Conflict Lab",
+		"GIT_COMMITTER_EMAIL=git-conflict-lab@localhost",
+	}
+	out, err := gitx.RunWithEnv(ctx, repo, mergeEnv, "merge", "feature/login")
 	var exitErr *gitx.ExitError
 	isExit := asExitError(err, &exitErr)
 	if err == nil {
@@ -128,6 +137,15 @@ func TestGenerateWritesStateManifest(t *testing.T) {
 	}
 	if _, err := time.Parse(time.RFC3339, state.CreatedAt); err != nil {
 		t.Errorf("manifest created_at not RFC3339: %v", err)
+	}
+
+	// The manifest must not dirty the user's worktree.
+	status, err := gitx.Run(context.Background(), repo, "status", "--porcelain")
+	if err != nil {
+		t.Fatalf("git status failed: %v", err)
+	}
+	if strings.TrimSpace(status) != "" {
+		t.Errorf("generated repo is dirty, want clean status:\n%s", status)
 	}
 }
 

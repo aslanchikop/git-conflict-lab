@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aslanchikop/git-conflict-lab/internal/gitx"
@@ -116,7 +117,34 @@ func Generate(ctx context.Context, labsRoot, name string) (string, error) {
 		return "", err
 	}
 
+	// Keep the user's `git status` clean: the advisory manifest lives in
+	// the worktree, so exclude it via the repository-local exclude file
+	// (never the global config, never a tracked .gitignore).
+	if err := excludeManifestDir(candidate); err != nil {
+		return "", err
+	}
+
 	return candidate, nil
+}
+
+// excludeManifestDir appends the manifest directory to the repository's
+// local .git/info/exclude so the generated repo starts with a clean
+// `git status`. The file is repository-local and untracked by design.
+func excludeManifestDir(repo string) error {
+	excludePath := filepath.Join(repo, ".git", "info", "exclude")
+	line := stateDir + "/"
+	var content string
+	if data, err := os.ReadFile(excludePath); err == nil {
+		content = string(data)
+		if strings.Contains(content, line) {
+			return nil
+		}
+		if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+	}
+	content += "# git-conflict-lab advisory state (not part of the exercise)\n" + line + "\n"
+	return os.WriteFile(excludePath, []byte(content), 0o644)
 }
 
 // gitRun is a helper that runs git inside the exercise repository with
