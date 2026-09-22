@@ -41,6 +41,12 @@ const (
 func baseEnv(date string) []string {
 	return []string{
 		"GIT_CONFIG_NOSYSTEM=1",
+		// Neutralize user global config (commit.gpgsign, core.autocrlf,
+		// user.name overrides, ...): generation must not depend on it and
+		// must never fail because of it. os.DevNull is "nul" on Windows
+		// and /dev/null elsewhere.
+		"GIT_CONFIG_GLOBAL=" + os.DevNull,
+		"GIT_CONFIG_COUNT=0",
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_AUTHOR_DATE=" + date,
 		"GIT_COMMITTER_DATE=" + date,

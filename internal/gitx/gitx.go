@@ -65,7 +65,7 @@ func RunWithEnv(ctx context.Context, dir string, extraEnv []string, args ...stri
 	cmd := exec.CommandContext(runCtx, "git", args...)
 	cmd.Dir = dir
 	if len(extraEnv) > 0 {
-		cmd.Env = append(os.Environ(), extraEnv...)
+		cmd.Env = overrideEnv(os.Environ(), extraEnv)
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -89,6 +89,26 @@ func RunWithEnv(ctx context.Context, dir string, extraEnv []string, args ...stri
 	return string(output), nil
 }
 
+// overrideEnv returns base with every KEY=VALUE entry of overrides
+// applied: existing entries whose key matches an override are removed
+// first, so overrides win on every platform (a plain append would leave
+// duplicate entries whose winner is platform-defined).
+func overrideEnv(base, overrides []string) []string {
+	keys := make(map[string]bool, len(overrides))
+	for _, kv := range overrides {
+		if i := strings.IndexByte(kv, '='); i > 0 {
+			keys[kv[:i]] = true
+		}
+	}
+	kept := make([]string, 0, len(base)+len(overrides))
+	for _, kv := range base {
+		if i := strings.IndexByte(kv, '='); i > 0 && keys[kv[:i]] {
+			continue
+		}
+		kept = append(kept, kv)
+	}
+	return append(kept, overrides...)
+}
 // Run executes git with the given arguments in dir and returns combined
 // stdout+stderr output. Arguments must be non-empty strings.
 func Run(ctx context.Context, dir string, args ...string) (string, error) {

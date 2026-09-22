@@ -122,6 +122,30 @@ func TestGenerateSecondRunFailsSafe(t *testing.T) {
 	}
 }
 
+func TestGenerateIgnoresHostileGlobalConfig(t *testing.T) {
+	// A user with commit.gpgsign=true (and no usable GPG setup for the
+	// tool) must not break generation: the generator neutralizes global
+	// and system Git config per invocation.
+	global := filepath.Join(t.TempDir(), "gitconfig")
+	cfg := "[commit]\n\tgpgsign = true\n[user]\n\tname = Someone Else\n\temail = someone@else.invalid\n"
+	if err := os.WriteFile(global, []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+
+	repo, err := Generate(context.Background(), t.TempDir(), "merge-basic")
+	if err != nil {
+		t.Fatalf("Generate failed with hostile global config: %v", err)
+	}
+	// Identity must be the generator's, not the user's.
+	out, err := gitx.Run(context.Background(), repo, "log", "-1", "--format=%an <%ae>", "main")
+	if err != nil {
+		t.Fatalf("git log failed: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "Git Conflict Lab <git-conflict-lab@localhost>" {
+		t.Errorf("commit identity = %q, want generator identity", got)
+	}
+}
 func TestGenerateWritesStateManifest(t *testing.T) {
 	repo := generateInto(t)
 	data, err := os.ReadFile(filepath.Join(repo, stateDir, "state.json"))
