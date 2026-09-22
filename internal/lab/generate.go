@@ -166,10 +166,10 @@ func writeFileSync(path string, data []byte) error {
 
 // generateMergeBasic builds the merge-basic scenario:
 //
-//   base:   login.go created (both sides descend from this commit)
-//   main:   two commits - a doc-comment edit and a real code edit that
-//           rewrites the same return line the feature branch rewrites
-//   feature/login: rewrites that same line differently
+//	base:   login.go created (both sides descend from this commit)
+//	main:   two commits - a doc-comment edit and a real code edit that
+//	        rewrites the same return line the feature branch rewrites
+//	feature/login: rewrites that same line differently
 //
 // Merging feature into main conflicts because both sides change the same
 // line differently (content conflict under the ort strategy).
@@ -273,6 +273,7 @@ func Login(user, password string) bool {
 
 	return nil
 }
+
 // writeState records the generated scenario in the advisory manifest.
 func writeState(ctx context.Context, labsRoot, repo string) error {
 	sha := func(ref string) string {
@@ -317,6 +318,7 @@ func trimSpace(s string) string {
 	}
 	return s[start:end]
 }
+
 // jsonUnmarshal is a small indirection over encoding/json for tests.
 func jsonUnmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)

@@ -88,6 +88,7 @@ func RunWithEnv(ctx context.Context, dir string, extraEnv []string, args ...stri
 	}
 	return string(output), nil
 }
+
 // Run executes git with the given arguments in dir and returns combined
 // stdout+stderr output. Arguments must be non-empty strings.
 func Run(ctx context.Context, dir string, args ...string) (string, error) {
