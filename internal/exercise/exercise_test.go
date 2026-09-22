@@ -2,8 +2,10 @@ package exercise
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 // TestCatalogLoads verifies the embedded catalog parses and validates.
@@ -85,5 +87,34 @@ func TestCatalogSpecsValid(t *testing.T) {
 		if err := spec.Validate(); err != nil {
 			t.Errorf("spec %q failed validation: %v", spec.ID, err)
 		}
+	}
+}
+
+// TestLoadCatalogDuplicateIDRegression feeds a synthetic two-file catalog
+// with the same exercise id and asserts the duplicate error (fail fast,
+// never silently last-wins).
+func TestLoadCatalogDuplicateIDRegression(t *testing.T) {
+	specJSON := func(title string) string {
+		return fmt.Sprintf(`{
+			"id": "merge-basic",
+			"title": %q,
+			"difficulty": "easy",
+			"objective": "objective",
+			"description": "description",
+			"hints": ["hint one"]
+		}`, title)
+	}
+	fsys := fstest.MapFS{
+		"catalog/one.json": &fstest.MapFile{Data: []byte(specJSON("First Title"))},
+		"catalog/two.json": &fstest.MapFile{Data: []byte(specJSON("Second Title"))},
+	}
+
+	_, err := loadCatalog(fsys)
+	if err == nil {
+		t.Fatal("loadCatalog with duplicate ids must fail, got nil error")
+	}
+	wantSub := `duplicate exercise id "merge-basic"`
+	if !strings.Contains(err.Error(), wantSub) {
+		t.Errorf("error = %q, want substring %q", err, wantSub)
 	}
 }

@@ -38,7 +38,7 @@ var (
 // catalogByIDs parses the embedded catalog at most once. Any failure
 // panics: a broken embedded catalog is a programmer error.
 var catalogByIDs = sync.OnceValue(func() map[string]Spec {
-	byID, err := loadCatalog()
+	byID, err := loadCatalog(catalogFS)
 	if err != nil {
 		panic(err)
 	}
@@ -49,8 +49,12 @@ var catalogByIDs = sync.OnceValue(func() map[string]Spec {
 // invalid catalog data fails fast instead of on first use.
 func init() { catalogByIDs() }
 
-func loadCatalog() (map[string]Spec, error) {
-	entries, err := fs.ReadDir(catalogFS, "catalog")
+// loadCatalog parses and validates every catalog JSON file under dir in
+// fsys. It is parametrized over fs.FS so tests can feed synthetic catalogs
+// (the production caller passes the embedded catalogFS).
+func loadCatalog(fsys fs.FS) (map[string]Spec, error) {
+	const dir = "catalog"
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return nil, fmt.Errorf("exercise: read catalog dir: %w", err)
 	}
@@ -59,7 +63,7 @@ func loadCatalog() (map[string]Spec, error) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
-		raw, err := catalogFS.ReadFile("catalog/" + entry.Name())
+		raw, err := fs.ReadFile(fsys, dir+"/"+entry.Name())
 		if err != nil {
 			return nil, fmt.Errorf("exercise: read %s: %w", entry.Name(), err)
 		}
