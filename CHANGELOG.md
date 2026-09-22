@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 0.1.0-alpha.2
+
+### Added
+
+- `start <exercise-id>` is now live for `merge-basic`: generates a deterministic, isolated Git repository under `~/git-conflict-lab-labs/` (override with `GIT_CONFLICT_LAB_LABS`) with `main` and `feature/login` branches that genuinely conflict on merge.
+- `internal/lab` generation engine: TOCTOU re-validation, repo-local inline identity (no global config writes), pinned commit dates for reproducible SHAs, and an advisory state manifest (`.git-conflict-lab/state.json`) for the Milestone C checker.
 ## [Unreleased] - 0.1.0-alpha.1
 
 ### Added

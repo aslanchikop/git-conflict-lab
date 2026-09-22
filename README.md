@@ -2,7 +2,7 @@
 
 A free, open-source, offline CLI training utility for practicing real Git conflict resolution in safely generated, isolated repositories.
 
-> Status: Milestone A (foundation). The CLI skeleton, exercise catalog and safety groundwork are in place; exercise generation, checking and hints arrive in upcoming milestones tracked in GitHub Issues.
+> Status: Milestone B (exercise generation). The CLI skeleton, safety groundwork and the merge-basic generator are in place; the solution checker and hints arrive in upcoming milestones tracked in GitHub Issues.
 >
 > Platforms: Windows is verified locally and in CI; Linux is verified in CI; macOS support is planned but not yet verified.
 
@@ -16,14 +16,16 @@ A free, open-source, offline CLI training utility for practicing real Git confli
 What works **today**:
 
 - `git-conflict-lab list` - show the exercises in the embedded catalog
+- `git-conflict-lab start merge-basic` - create an isolated exercise repository under `~/git-conflict-lab-labs/merge-basic` (override the location with `GIT_CONFLICT_LAB_LABS`)
 - `git-conflict-lab version` - show the tool version
 - `git-conflict-lab help` - show usage and the command list
+
+`start` generates a real Git repository with `main` and `feature/login` branches whose merge conflicts on purpose. Solve it with real Git commands; the checker arrives next.
 
 What arrives **later** (the commands already exist and report their milestone):
 
 | Command | Delivered in | What it will do |
 |---------|--------------|-----------------|
-| `start <exercise-id>` | Milestone B | Generate an isolated exercise repository |
 | `check` | Milestone C | Verify your conflict resolution |
 | `hint <exercise-id>` | Milestone D | Reveal the next hint |
 
