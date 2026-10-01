@@ -111,43 +111,10 @@ func overrideEnv(base, overrides []string) []string {
 }
 
 // Run executes git with the given arguments in dir and returns combined
-// stdout+stderr output. Arguments must be non-empty strings.
+// stdout+stderr output. Arguments must be non-empty strings. It is a thin
+// wrapper over RunWithEnv without extra environment variables.
 func Run(ctx context.Context, dir string, args ...string) (string, error) {
-	for _, a := range args {
-		if a == "" {
-			return "", fmt.Errorf("%w: empty argument at position %d", ErrInvalidArgs, indexOf(args, a)+1)
-		}
-	}
-
-	if _, err := lookPath("git"); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrGitNotFound, err)
-	}
-
-	runCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(runCtx, "git", args...)
-	cmd.Dir = dir
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			return string(output), &ExitError{
-				Args:     args,
-				ExitCode: exitErr.ExitCode(),
-				Output:   string(output),
-			}
-		}
-		if errors.Is(runCtx.Err(), context.Canceled) {
-			return string(output), fmt.Errorf("git %s was canceled: %w", strings.Join(args, " "), runCtx.Err())
-		}
-		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-			return string(output), fmt.Errorf("git %s timed out after %s: %w", strings.Join(args, " "), defaultTimeout, runCtx.Err())
-		}
-		return string(output), fmt.Errorf("git %s failed to start: %w", strings.Join(args, " "), err)
-	}
-	return string(output), nil
+	return RunWithEnv(ctx, dir, nil, args...)
 }
 
 func indexOf(args []string, target string) int {
