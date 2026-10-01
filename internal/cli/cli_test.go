@@ -88,6 +88,9 @@ func TestStartUnknownExercise(t *testing.T) {
 }
 
 func TestStartGeneratesExercise(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow generation test in -short mode")
+	}
 	labs := t.TempDir()
 	t.Setenv(labsRootEnv, labs)
 
@@ -108,6 +111,9 @@ func TestStartGeneratesExercise(t *testing.T) {
 }
 
 func TestStartTwiceFailsSafe(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow generation test in -short mode")
+	}
 	t.Setenv(labsRootEnv, t.TempDir())
 
 	stdout, _, code := runArgs("start", "merge-basic")
@@ -124,6 +130,9 @@ func TestStartTwiceFailsSafe(t *testing.T) {
 }
 
 func TestStartNamedAttempt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow generation test in -short mode")
+	}
 	labs := t.TempDir()
 	t.Setenv(labsRootEnv, labs)
 	_, stderr, code := runArgs("start", "add-add", "--attempt", "second")

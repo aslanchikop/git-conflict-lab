@@ -24,6 +24,7 @@ func generateInto(t *testing.T) string {
 }
 
 func TestGenerateCreatesRepoWithBranches(t *testing.T) {
+	skipSlow(t)
 	repo := generateInto(t)
 
 	for _, ref := range []string{"main", "feature/login"} {
@@ -42,6 +43,7 @@ func TestGenerateCreatesRepoWithBranches(t *testing.T) {
 }
 
 func TestGenerateRealMergeConflict(t *testing.T) {
+	skipSlow(t)
 	repo := generateInto(t)
 	ctx := context.Background()
 
@@ -92,6 +94,7 @@ func TestGenerateRealMergeConflict(t *testing.T) {
 }
 
 func TestGenerateDeterministicSHAs(t *testing.T) {
+	skipSlow(t)
 	repoA := generateInto(t)
 	rootB := t.TempDir()
 	repoB, err := Generate(context.Background(), rootB, "merge-basic")
@@ -112,6 +115,7 @@ func TestGenerateDeterministicSHAs(t *testing.T) {
 }
 
 func TestGenerateSecondRunFailsSafe(t *testing.T) {
+	skipSlow(t)
 	root := t.TempDir()
 	if _, err := Generate(context.Background(), root, "merge-basic"); err != nil {
 		t.Fatalf("first Generate failed: %v", err)
@@ -123,6 +127,7 @@ func TestGenerateSecondRunFailsSafe(t *testing.T) {
 }
 
 func TestGenerateIgnoresHostileGlobalConfig(t *testing.T) {
+	skipSlow(t)
 	// A user with commit.gpgsign=true (and no usable GPG setup for the
 	// tool) must not break generation: the generator neutralizes global
 	// and system Git config per invocation.
@@ -148,6 +153,7 @@ func TestGenerateIgnoresHostileGlobalConfig(t *testing.T) {
 }
 
 func TestGeneratedLabMergesWithoutGlobalIdentity(t *testing.T) {
+	skipSlow(t)
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	for _, key := range []string{"GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"} {
@@ -174,6 +180,7 @@ func TestGeneratedLabMergesWithoutGlobalIdentity(t *testing.T) {
 	}
 }
 func TestGenerateWritesStateManifest(t *testing.T) {
+	skipSlow(t)
 	repo := generateInto(t)
 	data, err := os.ReadFile(filepath.Join(repo, stateDir, "state.json"))
 	if err != nil {

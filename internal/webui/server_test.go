@@ -9,6 +9,9 @@ import (
 )
 
 func TestBrowserAPIJourney(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow end-to-end Git test in -short mode")
+	}
 	server := httptest.NewServer((Server{Root: t.TempDir()}).Handler())
 	defer server.Close()
 	response, err := http.Get(server.URL + "/")
@@ -90,6 +93,9 @@ func TestBrowserAPIJourney(t *testing.T) {
 }
 
 func TestInspectMultipleConflictFiles(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow end-to-end Git test in -short mode")
+	}
 	server := httptest.NewServer((Server{Root: t.TempDir()}).Handler())
 	defer server.Close()
 	post := func(path, body string) *http.Response {

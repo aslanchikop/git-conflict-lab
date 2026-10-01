@@ -11,6 +11,7 @@ import (
 )
 
 func TestCheckExerciseJourney(t *testing.T) {
+	skipSlow(t)
 	repo := generateInto(t)
 	ctx := context.Background()
 	check := func(wantPass bool, wantText string) {
@@ -67,6 +68,7 @@ func Login(user, password string) bool {
 }
 
 func TestHintsAdvanceAndStop(t *testing.T) {
+	skipSlow(t)
 	repo := generateInto(t)
 	for i := 1; i <= 4; i++ {
 		got, err := NextHint(repo, "merge-basic")
@@ -84,6 +86,7 @@ func TestHintsAdvanceAndStop(t *testing.T) {
 }
 
 func TestAddAddJourney(t *testing.T) {
+	skipSlow(t)
 	repo, err := Generate(context.Background(), t.TempDir(), "add-add")
 	if err != nil {
 		t.Fatal(err)
@@ -114,6 +117,7 @@ func TestAddAddJourney(t *testing.T) {
 }
 
 func TestModifyDeleteJourney(t *testing.T) {
+	skipSlow(t)
 	repo, err := Generate(context.Background(), t.TempDir(), "modify-delete")
 	if err != nil {
 		t.Fatal(err)
@@ -151,6 +155,7 @@ func Login() bool {
 }
 
 func TestRebaseJourney(t *testing.T) {
+	skipSlow(t)
 	repo, err := Generate(context.Background(), t.TempDir(), "rebase-basic")
 	if err != nil {
 		t.Fatal(err)
@@ -187,6 +192,7 @@ func TestRebaseJourney(t *testing.T) {
 }
 
 func TestMergeMultiJourney(t *testing.T) {
+	skipSlow(t)
 	repo, err := Generate(context.Background(), t.TempDir(), "merge-multi")
 	if err != nil {
 		t.Fatal(err)
@@ -234,6 +240,7 @@ func TestMergeMultiJourney(t *testing.T) {
 }
 
 func TestCherryPickJourney(t *testing.T) {
+	skipSlow(t)
 	repo, err := Generate(context.Background(), t.TempDir(), "cherry-pick")
 	if err != nil {
 		t.Fatal(err)

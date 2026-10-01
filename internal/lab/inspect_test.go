@@ -8,6 +8,7 @@ import (
 )
 
 func TestInspectExerciseVersions(t *testing.T) {
+	skipSlow(t)
 	for _, tc := range []struct {
 		id            string
 		baseExists    bool
@@ -44,6 +45,7 @@ func TestInspectExerciseVersions(t *testing.T) {
 }
 
 func TestInspectSelectsOnlyKnownConflictFiles(t *testing.T) {
+	skipSlow(t)
 	repo, err := Generate(context.Background(), t.TempDir(), "merge-multi")
 	if err != nil {
 		t.Fatal(err)

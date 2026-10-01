@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `start` now prints the full path to the generated repository and scenario-specific merge instructions.
 - README and help reflect the working commands and current scope.
+- Scenario metadata (feature branch, conflict files, base ref, strategy) lives in a single registry (`internal/lab/scenario.go`) shared by the generator, checker, inspector, and CLI instead of three parallel hard-coded mappings.
+- `gitx.Run` is a thin wrapper over `gitx.RunWithEnv`, removing duplicated process plumbing.
+- A failed generation now removes its partial directory so a retry starts clean instead of being refused.
+- Slow end-to-end Git tests are skipped under `go test -short` (the `internal/lab` package drops from ~70s to well under a second).
 
 ## [Unreleased] - 0.1.0-alpha.2
 
