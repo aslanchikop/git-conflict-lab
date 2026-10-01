@@ -1,0 +1,29 @@
+{
+  "id": "merge-multi",
+  "title": "Resolve Two Conflicting Files",
+  "difficulty": "hard",
+  "skills": ["read-conflicts", "multi-file-resolution", "merge-history"],
+  "objective": "Merge a release branch while resolving conflicts in both configuration and review policy.",
+  "description": "Main introduces a manual review and a longer timeout. The release branch introduces automated review and a still longer timeout. Resolve both files, keep both review methods, and finish one merge commit.",
+  "lesson": {
+    "principle": "A merge can pause on several files at once. Check git status until every unmerged path is resolved and staged.",
+    "question": "After fixing config.txt, Git still lists review.txt as unmerged. What should you do before committing?",
+    "options": [
+      "Commit config.txt alone",
+      "Resolve and stage review.txt too",
+      "Run git merge --abort"
+    ],
+    "correct": 1,
+    "explanation": "The merge cannot be completed while any path remains unmerged. Resolve and stage both files before the commit.",
+    "pitfalls": [
+      "Fixing only the first conflicted file.",
+      "Keeping only one review method.",
+      "Leaving conflict markers in either file."
+    ]
+  },
+  "hints": [
+    "Run git merge feature/release, then git status. Two files need attention.",
+    "Set config.txt to timeout=60. Make review.txt express both manual and automated review.",
+    "Stage both files with git add config.txt review.txt, commit, then run check."
+  ]
+}

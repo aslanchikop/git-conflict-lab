@@ -1,0 +1,29 @@
+{
+  "id": "cherry-pick",
+  "title": "Cherry-pick a Conflicting Commit",
+  "difficulty": "hard",
+  "skills": ["read-conflicts", "cherry-pick-history"],
+  "objective": "Bring one audit commit onto main and resolve the conflict without merging the whole branch.",
+  "description": "Main requires audit logging while feature/audit makes it verbose. Cherry-pick the feature commit onto main, resolve policy.txt to audit=required+verbose, and continue the paused cherry-pick.",
+  "lesson": {
+    "principle": "Cherry-pick replays one chosen commit. Its result has one parent, unlike a merge commit with two parents.",
+    "question": "After resolving and staging policy.txt during a paused cherry-pick, which command resumes it?",
+    "options": [
+      "git merge --continue",
+      "git cherry-pick --continue",
+      "git rebase --continue"
+    ],
+    "correct": 1,
+    "explanation": "git cherry-pick --continue finishes the replay of the selected feature commit on main.",
+    "pitfalls": [
+      "Merging the entire feature branch instead of replaying one commit.",
+      "Running git commit while CHERRY_PICK_HEAD is present.",
+      "Keeping verbose audit but dropping the required audit rule."
+    ]
+  },
+  "hints": [
+    "Stay on main and run git cherry-pick feature/audit. Git pauses at policy.txt.",
+    "Set policy.txt to audit=required+verbose and run git add policy.txt.",
+    "Run git cherry-pick --continue, then check the final linear history with git log --oneline --graph."
+  ]
+}

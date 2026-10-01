@@ -2,8 +2,25 @@
   "id": "merge-basic",
   "title": "Basic Merge Conflict",
   "difficulty": "easy",
+  "skills": ["read-conflicts", "merge-history"],
   "objective": "Resolve a two-branch, one-file merge conflict so that both branches' changes to the same line are preserved in the final result.",
-  "description": "You will create two branches that edit the same line of a shared file differently, then merge them to trigger your first conflict. Your job is to read the conflict markers, combine both edits, and complete the merge commit. This is the fundamental workflow you will repeat in every real-world conflict.",
+  "description": "The lab starts with two branches that edited the same line differently. Merge feature/login into main, read the conflict markers, combine the requirements, and complete the merge commit.",
+  "lesson": {
+    "principle": "A merge combines intent, not just lines. A stricter password minimum also satisfies the earlier minimum.",
+    "question": "Main requires a password of at least 8 characters. The feature requires a user name of at least 3 and a password of at least 12. Which final rule keeps both requirements?",
+    "options": [
+      "Password length at least 8 only",
+      "User name at least 3 and password at least 12",
+      "User name at least 3 only"
+    ],
+    "correct": 1,
+    "explanation": "The 12-character minimum includes main's 8-character minimum, while the user name rule preserves the feature change.",
+    "pitfalls": [
+      "Leaving conflict marker lines in login.go.",
+      "Keeping only main's return line and losing the user name check.",
+      "Editing the file without staging and committing the merge."
+    ]
+  },
   "hints": [
     "Run the merge and study the output carefully; Git tells you exactly which file is in conflict before you open anything.",
     "Open the conflicted file and locate the <<<<<<<, =======, and >>>>>>> markers; each side of the marker block is one branch's version of the line.",

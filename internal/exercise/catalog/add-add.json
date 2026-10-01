@@ -1,0 +1,29 @@
+{
+  "id": "add-add",
+  "title": "Both Branches Add a File",
+  "difficulty": "easy",
+  "skills": ["read-conflicts", "combine-content", "merge-history"],
+  "objective": "Merge two branches that independently created notes.txt, preserving the note from each branch.",
+  "description": "Both branches add a file at the same path. Git cannot choose which newly created version to keep. Resolve the add/add conflict by combining the two notes, then commit the merge.",
+  "lesson": {
+    "principle": "An add/add conflict means both branches created a file at the same path. Git cannot decide which content to keep.",
+    "question": "What should the final notes.txt contain in this exercise?",
+    "options": [
+      "Only the main note",
+      "Only the feature note",
+      "Both the main and feature notes"
+    ],
+    "correct": 2,
+    "explanation": "Both notes are intentional. Combine them in one file, remove the conflict markers, and finish the merge.",
+    "pitfalls": [
+      "Keeping only one side of the new file.",
+      "Committing conflict markers as text.",
+      "Forgetting git add notes.txt before git commit."
+    ]
+  },
+  "hints": [
+    "Run git merge feature/notes and inspect git status. The file is marked as added by both branches.",
+    "Open notes.txt. Keep both the main note and the feature note, removing the conflict markers.",
+    "Run git add notes.txt, git commit, and git-conflict-lab check."
+  ]
+}

@@ -33,6 +33,8 @@ func TestListSortedAndCopy(t *testing.T) {
 	}
 	mutated[0].ID = "mutated-id"
 	mutated[0].Hints[0] = "mutated-hint"
+	mutated[0].Skills[0] = "mutated-skill"
+	mutated[0].Lesson.Options[0] = "mutated-option"
 	after := List()
 	for _, spec := range after {
 		if spec.ID == "mutated-id" {
@@ -40,6 +42,12 @@ func TestListSortedAndCopy(t *testing.T) {
 		}
 		if len(spec.Hints) > 0 && spec.Hints[0] == "mutated-hint" {
 			t.Fatal("List result aliases catalog state: hint mutation visible")
+		}
+		if len(spec.Skills) > 0 && spec.Skills[0] == "mutated-skill" {
+			t.Fatal("List result aliases catalog state: skill mutation visible")
+		}
+		if len(spec.Lesson.Options) > 0 && spec.Lesson.Options[0] == "mutated-option" {
+			t.Fatal("List result aliases catalog state: lesson mutation visible")
 		}
 	}
 }
@@ -101,7 +109,9 @@ func TestLoadCatalogDuplicateIDRegression(t *testing.T) {
 			"difficulty": "easy",
 			"objective": "objective",
 			"description": "description",
-			"hints": ["hint one"]
+			"hints": ["hint one"],
+			"skills": ["read-conflicts"],
+			"lesson": {"principle":"principle","question":"question","options":["one","two","three"],"correct":1,"explanation":"explanation","pitfalls":["mistake"]}
 		}`, title)
 	}
 	fsys := fstest.MapFS{

@@ -1,0 +1,25 @@
+{
+  "id": "rebase-basic",
+  "title": "Resolve a Conflict During Rebase",
+  "difficulty": "medium",
+  "skills": ["read-conflicts", "rebase-history"],
+  "objective": "Rebase feature/fast onto main and reconcile two changes to settings.txt.",
+  "description": "The feature branch enables fast mode while main introduces a safety rule. Rebase the feature branch onto main, resolve the conflict so the final mode is safe-fast, and continue the rebase.",
+  "lesson": {
+    "principle": "Rebase replays a feature commit on top of main. When a replay conflicts, resolve and stage the file before continuing.",
+    "question": "After setting settings.txt to the intended mode and staging it, which command resumes the paused rebase?",
+    "options": ["git commit", "git merge --continue", "git rebase --continue"],
+    "correct": 2,
+    "explanation": "git rebase --continue resumes the paused commit replay. The final branch should have a linear history based on main.",
+    "pitfalls": [
+      "Running git commit instead of continuing the paused rebase.",
+      "Leaving settings.txt unstaged.",
+      "Keeping only fast mode and dropping main's safety rule."
+    ]
+  },
+  "hints": [
+    "Switch to feature/fast, then run git rebase main. Git pauses when settings.txt conflicts.",
+    "Edit settings.txt to contain mode=safe-fast, then run git add settings.txt.",
+    "Run git rebase --continue. If Git opens an editor, keep the commit message and save it. Then run git-conflict-lab check."
+  ]
+}

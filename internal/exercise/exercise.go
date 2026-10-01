@@ -25,6 +25,18 @@ type Spec struct {
 	Objective   string   `json:"objective"`
 	Description string   `json:"description"`
 	Hints       []string `json:"hints"`
+	Skills      []string `json:"skills"`
+	Lesson      Lesson   `json:"lesson"`
+}
+
+// Lesson is a short self-check shown before the learner resolves a scenario.
+type Lesson struct {
+	Principle   string   `json:"principle"`
+	Question    string   `json:"question"`
+	Options     []string `json:"options"`
+	Correct     int      `json:"correct"`
+	Explanation string   `json:"explanation"`
+	Pitfalls    []string `json:"pitfalls"`
 }
 
 // ErrNotFound is returned by Get when no exercise matches the given id.
@@ -104,6 +116,29 @@ func (s Spec) Validate() error {
 		return fmt.Errorf("spec id %q: must be kebab-case (lowercase letters, digits, hyphens)", s.ID)
 	case len(s.Hints) < 1:
 		return fmt.Errorf("spec %q: at least one hint is required", s.ID)
+	case len(s.Skills) < 1:
+		return fmt.Errorf("spec %q: at least one skill is required", s.ID)
+	case strings.TrimSpace(s.Lesson.Principle) == "" || strings.TrimSpace(s.Lesson.Question) == "" || strings.TrimSpace(s.Lesson.Explanation) == "":
+		return fmt.Errorf("spec %q: lesson text is incomplete", s.ID)
+	case len(s.Lesson.Options) != 3 || s.Lesson.Correct < 0 || s.Lesson.Correct >= len(s.Lesson.Options):
+		return fmt.Errorf("spec %q: lesson must have three options and a valid answer", s.ID)
+	case len(s.Lesson.Pitfalls) == 0:
+		return fmt.Errorf("spec %q: lesson needs at least one common mistake", s.ID)
+	}
+	for _, option := range s.Lesson.Options {
+		if strings.TrimSpace(option) == "" {
+			return fmt.Errorf("spec %q: lesson option is empty", s.ID)
+		}
+	}
+	for _, pitfall := range s.Lesson.Pitfalls {
+		if strings.TrimSpace(pitfall) == "" {
+			return fmt.Errorf("spec %q: lesson mistake is empty", s.ID)
+		}
+	}
+	for _, skill := range s.Skills {
+		if !validID.MatchString(skill) {
+			return fmt.Errorf("spec %q: invalid skill %q", s.ID, skill)
+		}
 	}
 	return nil
 }
@@ -141,6 +176,9 @@ func Get(id string) (Spec, error) {
 func copySpec(s Spec) Spec {
 	out := s
 	out.Hints = append([]string(nil), s.Hints...)
+	out.Skills = append([]string(nil), s.Skills...)
+	out.Lesson.Options = append([]string(nil), s.Lesson.Options...)
+	out.Lesson.Pitfalls = append([]string(nil), s.Lesson.Pitfalls...)
 	return out
 }
 

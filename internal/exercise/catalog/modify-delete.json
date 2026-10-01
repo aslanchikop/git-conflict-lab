@@ -1,0 +1,25 @@
+{
+  "id": "modify-delete",
+  "title": "Modified on One Branch, Deleted on Another",
+  "difficulty": "medium",
+  "skills": ["deletion-resolution", "merge-history"],
+  "objective": "Resolve a modify/delete conflict by accepting the deliberate removal of an obsolete file.",
+  "description": "Main updates legacy.txt while feature/cleanup removes it. During the merge, decide that the obsolete file should stay deleted, mark that resolution, and finish the merge commit.",
+  "lesson": {
+    "principle": "A modify/delete conflict is a decision about whether the file should still exist, not a line-by-line edit.",
+    "question": "The feature branch deliberately removes obsolete legacy.txt. Which command records that choice during the merge?",
+    "options": ["git add legacy.txt", "git rm legacy.txt", "git merge --abort"],
+    "correct": 1,
+    "explanation": "git rm removes the file from the worktree and stages the deletion, allowing the merge commit to keep it deleted.",
+    "pitfalls": [
+      "Restoring legacy.txt and accidentally rejecting the intended deletion.",
+      "Deleting the file manually without staging the removal.",
+      "Stopping before the merge commit is created."
+    ]
+  },
+  "hints": [
+    "Run git merge feature/cleanup and inspect git status. Git reports a modify/delete conflict for legacy.txt.",
+    "The feature branch intentionally removes the obsolete file. Use git rm legacy.txt to keep that deletion.",
+    "Run git commit, then git-conflict-lab check to verify the merge and the file removal."
+  ]
+}
