@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 0.1.0-alpha.3
+
+### Added
+
+- A working `check` command that verifies merge history, conflict resolution, and exercise-specific outcomes without executing learner code.
+- Progressive `hint` delivery for generated labs.
+- `add-add`, `modify-delete`, and `rebase-basic` exercises with end-to-end Git tests.
+- Named repeat attempts via `start <id> --attempt <name>`.
+- A synthetic repository-local Git identity so first-time users can merge and commit without global Git setup.
+- An offline localhost browser interface (`ui`) for choosing exercises, managing attempts, revealing hints, and checking solutions.
+- A redesigned responsive interface with search, difficulty filters, loading states, completion animation, and five achievements based on verified Git progress.
+- A read-only four-version conflict inspector, contextual solution review, a beginner learning path, and a portfolio walkthrough.
+- Scenario-specific concepts, self-check questions, explanations, and common mistakes in the browser workspace.
+- Two advanced exercises: a two-file merge and a conflicting cherry-pick, each with history verification, hints, and a browser walkthrough.
+- A seven-skill progress map derived from verified completed repositories, plus two new achievements.
+- macOS CI coverage and a tag-triggered multi-platform release workflow.
+
+### Changed
+
+- `start` now prints the full path to the generated repository and scenario-specific merge instructions.
+- README and help reflect the working commands and current scope.
+
 ## [Unreleased] - 0.1.0-alpha.2
 
 ### Added
