@@ -1,6 +1,4 @@
-// Package lab is the security boundary between the Git Conflict Lab tool
-// and the user's filesystem. Milestone A scope: resolve and validate the
-// target directory for an exercise. Generation lands in Milestone B.
+// Package lab manages generated exercise repositories and their filesystem boundary.
 package lab
 
 import (
@@ -22,17 +20,6 @@ var (
 	ErrTraversal       = errors.New("target path escapes the labs root via symlink")
 	ErrUnsafeLocation  = errors.New("target location is unsafe")
 )
-
-// NotAvailableError reports a CLI command that exists on the command surface
-// but has no implementation yet in the current milestone.
-type NotAvailableError struct {
-	Command   string
-	Milestone string
-}
-
-func (e *NotAvailableError) Error() string {
-	return fmt.Sprintf("%s is not implemented yet - it arrives in Milestone %s.", e.Command, e.Milestone)
-}
 
 func isReservedDeviceName(name string) bool {
 	base := strings.ToUpper(name)
@@ -112,9 +99,7 @@ func sameDir(a, b string) bool {
 // a git repository - only directories strictly between the candidate and
 // the labs root are checked for unrelated nested work trees.
 func ResolveTargetDir(labsRoot, name string) (string, error) {
-	// TOCTOU boundary: filesystem state can change between validation here
-	// and directory creation when Milestone B generation lands; the generation
-	// step must re-verify the resolved path at creation time.
+	// TOCTOU boundary: generation re-verifies the path before creation.
 	// (a) Empty or whitespace-only name.
 	if strings.TrimSpace(name) == "" {
 		return "", ErrEmptyName

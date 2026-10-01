@@ -1,11 +1,10 @@
 // generate.go implements deterministic exercise-repository generation.
-// Milestone B scope: create a real, isolated Git repository for an
-// exercise at a validated target path, with a per-exercise state manifest
-// for the Milestone C checker.
+// It creates real, isolated Git repositories at validated target paths
+// and writes an advisory state manifest for the checker.
 //
 // Determinism: all commits use a fixed identity and fixed author/committer
 // dates via per-invocation environment, so two generations produce
-// byte-identical commits (identical SHAs).
+// byte-identical starting commits (identical SHAs).
 //
 // Safety: the target path is re-validated immediately before creation
 // (TOCTOU); generation never touches global Git configuration, never adds
@@ -53,9 +52,8 @@ func baseEnv(date string) []string {
 	}
 }
 
-// commitEnv returns the environment plus inline identity configuration.
-// Identity is passed via -c flags on every commit command; no git config
-// file is ever written.
+// commitEnv pins the generator identity for its own commits. A local lab
+// identity is written later so learners can merge and commit without setup.
 func commitEnv(date string) []string {
 	return append(baseEnv(date),
 		"GIT_AUTHOR_NAME="+generatorName,
@@ -67,7 +65,7 @@ func commitEnv(date string) []string {
 
 // State is the advisory manifest written inside a generated exercise
 // repository at .git-conflict-lab/state.json. It records what the
-// generator produced so the Milestone C checker can cross-check the
+// generator produced so the checker can cross-check the
 // manifest against the actual Git state.
 //
 // Trust limits: users can modify this file freely, so it is advisory
@@ -75,15 +73,16 @@ func commitEnv(date string) []string {
 // against the real Git refs and treat any mismatch as a failure, not
 // trust the file itself.
 type State struct {
-	ExerciseID     string `json:"exercise_id"`
-	CreatedAt      string `json:"created_at"`
-	LabsRoot       string `json:"labs_root"`
-	BaseSHA        string `json:"base_sha"`
-	MainSHA        string `json:"main_sha"`
-	FeatureSHA     string `json:"feature_sha"`
-	FeatureBranch  string `json:"feature_branch"`
-	ConflictFile   string `json:"conflict_file"`
-	CheckerVersion int    `json:"checker_version"`
+	ExerciseID     string   `json:"exercise_id"`
+	CreatedAt      string   `json:"created_at"`
+	LabsRoot       string   `json:"labs_root"`
+	BaseSHA        string   `json:"base_sha"`
+	MainSHA        string   `json:"main_sha"`
+	FeatureSHA     string   `json:"feature_sha"`
+	FeatureBranch  string   `json:"feature_branch"`
+	ConflictFile   string   `json:"conflict_file"`
+	ConflictFiles  []string `json:"conflict_files,omitempty"`
+	CheckerVersion int      `json:"checker_version"`
 }
 
 // stateDir is the manifest location inside a generated repository.
@@ -97,7 +96,15 @@ const stateDir = ".git-conflict-lab"
 // from ResolveTargetDir apply; the target path is additionally re-checked
 // immediately before creation (TOCTOU).
 func Generate(ctx context.Context, labsRoot, name string) (string, error) {
-	candidate, err := ResolveTargetDir(labsRoot, name)
+	return GenerateAs(ctx, labsRoot, name, name)
+}
+
+// GenerateAs creates another named attempt without replacing an existing one.
+func GenerateAs(ctx context.Context, labsRoot, id, folder string) (string, error) {
+	if id != "merge-basic" && id != "add-add" && id != "modify-delete" && id != "rebase-basic" && id != "merge-multi" && id != "cherry-pick" {
+		return "", fmt.Errorf("unknown exercise %q", id)
+	}
+	candidate, err := ResolveTargetDir(labsRoot, folder)
 	if err != nil {
 		return "", err
 	}
@@ -115,11 +122,28 @@ func Generate(ctx context.Context, labsRoot, name string) (string, error) {
 		return "", fmt.Errorf("%w: cannot create exercise directory %s: %v", ErrUnsafeLocation, candidate, err)
 	}
 
-	if err := generateMergeBasic(ctx, candidate); err != nil {
-		return "", err
+	var generateErr error
+	switch id {
+	case "merge-basic":
+		generateErr = generateMergeBasic(ctx, candidate)
+	case "add-add":
+		generateErr = generateAddAdd(ctx, candidate)
+	case "modify-delete":
+		generateErr = generateModifyDelete(ctx, candidate)
+	case "rebase-basic":
+		generateErr = generateRebaseBasic(ctx, candidate)
+	case "merge-multi":
+		generateErr = generateMergeMulti(ctx, candidate)
+	case "cherry-pick":
+		generateErr = generateCherryPick(ctx, candidate)
+	default:
+		return "", fmt.Errorf("unknown exercise %q", id)
+	}
+	if generateErr != nil {
+		return "", generateErr
 	}
 
-	if err := writeState(ctx, labsRoot, candidate); err != nil {
+	if err := writeState(ctx, labsRoot, candidate, id); err != nil {
 		return "", err
 	}
 
@@ -129,8 +153,28 @@ func Generate(ctx context.Context, labsRoot, name string) (string, error) {
 	if err := excludeManifestDir(candidate); err != nil {
 		return "", err
 	}
+	if err := configureLabGit(candidate); err != nil {
+		return "", err
+	}
 
 	return candidate, nil
+}
+
+// configureLabGit gives beginners a working commit identity in this one
+// generated repository, without reading or writing their global Git config.
+func configureLabGit(repo string) error {
+	ctx := context.Background()
+	for key, value := range map[string]string{
+		"user.name":      generatorName,
+		"user.email":     generatorEmail,
+		"commit.gpgsign": "false",
+		"core.autocrlf":  "false",
+	} {
+		if _, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "config", "--local", key, value); err != nil {
+			return fmt.Errorf("cannot set lab-local Git config %s: %w", key, err)
+		}
+	}
+	return nil
 }
 
 // excludeManifestDir appends the manifest directory to the repository's
@@ -280,8 +324,223 @@ func Login(user, password string) bool {
 	return nil
 }
 
+func generateAddAdd(ctx context.Context, repo string) error {
+	if _, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "-c", "init.defaultBranch=main", "init"); err != nil {
+		return fmt.Errorf("git init failed: %w", err)
+	}
+	if err := writeFileSync(filepath.Join(repo, "exercise.txt"), []byte("Both branches will add notes.txt.\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "exercise.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "chore: initialize notes exercise"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/notes"); err != nil {
+		return err
+	}
+	if err := writeFileSync(filepath.Join(repo, "notes.txt"), []byte("Feature note: document the review steps.\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "notes.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "docs: add feature notes"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+		return err
+	}
+	if err := writeFileSync(filepath.Join(repo, "notes.txt"), []byte("Main note: record the release checklist.\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "notes.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "docs: add main notes"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateModifyDelete(ctx context.Context, repo string) error {
+	if _, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "-c", "init.defaultBranch=main", "init"); err != nil {
+		return fmt.Errorf("git init failed: %w", err)
+	}
+	if err := writeFileSync(filepath.Join(repo, "legacy.txt"), []byte("Legacy integration instructions.\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "legacy.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "docs: add legacy instructions"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/cleanup"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "rm", "legacy.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "chore: remove obsolete instructions"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+		return err
+	}
+	if err := writeFileSync(filepath.Join(repo, "legacy.txt"), []byte("Legacy integration instructions, revised.\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "legacy.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "docs: revise legacy instructions"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateRebaseBasic(ctx context.Context, repo string) error {
+	if _, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "-c", "init.defaultBranch=main", "init"); err != nil {
+		return fmt.Errorf("git init failed: %w", err)
+	}
+	file := filepath.Join(repo, "settings.txt")
+	if err := writeFileSync(file, []byte("mode=standard\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "settings.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "chore: add default mode"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/fast"); err != nil {
+		return err
+	}
+	if err := writeFileSync(file, []byte("mode=fast\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "settings.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "feat: enable fast mode"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+		return err
+	}
+	if err := writeFileSync(file, []byte("mode=safe\n")); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "add", "settings.txt"); err != nil {
+		return err
+	}
+	if _, err := gitCommit(ctx, repo, "commit", "-m", "feat: add safe mode"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateMergeMulti(ctx context.Context, repo string) error {
+	if _, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "-c", "init.defaultBranch=main", "init"); err != nil {
+		return err
+	}
+	write := func(config, review string) error {
+		if err := writeFileSync(filepath.Join(repo, "config.txt"), []byte(config+"\n")); err != nil {
+			return err
+		}
+		return writeFileSync(filepath.Join(repo, "review.txt"), []byte(review+"\n"))
+	}
+	commit := func(message string) error {
+		if _, err := gitCommit(ctx, repo, "add", "config.txt", "review.txt"); err != nil {
+			return err
+		}
+		_, err := gitCommit(ctx, repo, "commit", "-m", message)
+		return err
+	}
+	if err := write("timeout=30", "review=none"); err != nil {
+		return err
+	}
+	if err := commit("chore: add deployment defaults"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/release"); err != nil {
+		return err
+	}
+	if err := write("timeout=60", "review=automated"); err != nil {
+		return err
+	}
+	if err := commit("feat: prepare automated release"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+		return err
+	}
+	if err := write("timeout=45", "review=manual"); err != nil {
+		return err
+	}
+	return commit("feat: require manual release review")
+}
+
+func generateCherryPick(ctx context.Context, repo string) error {
+	if _, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "-c", "init.defaultBranch=main", "init"); err != nil {
+		return err
+	}
+	file := filepath.Join(repo, "policy.txt")
+	commit := func(content, message string) error {
+		if err := writeFileSync(file, []byte(content+"\n")); err != nil {
+			return err
+		}
+		if _, err := gitCommit(ctx, repo, "add", "policy.txt"); err != nil {
+			return err
+		}
+		_, err := gitCommit(ctx, repo, "commit", "-m", message)
+		return err
+	}
+	if err := commit("audit=off", "chore: add audit policy"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/audit"); err != nil {
+		return err
+	}
+	if err := commit("audit=verbose", "feat: add verbose audit"); err != nil {
+		return err
+	}
+	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+		return err
+	}
+	return commit("audit=required", "feat: require audit")
+}
+
 // writeState records the generated scenario in the advisory manifest.
-func writeState(ctx context.Context, labsRoot, repo string) error {
+func writeState(ctx context.Context, labsRoot, repo, id string) error {
+	branch := "feature/login"
+	conflictFile := "login.go"
+	if id == "add-add" {
+		branch = "feature/notes"
+		conflictFile = "notes.txt"
+	}
+	if id == "modify-delete" {
+		branch = "feature/cleanup"
+		conflictFile = "legacy.txt"
+	}
+	if id == "rebase-basic" {
+		branch = "feature/fast"
+		conflictFile = "settings.txt"
+	}
+	if id == "merge-multi" {
+		branch = "feature/release"
+		conflictFile = "config.txt"
+	}
+	if id == "cherry-pick" {
+		branch = "feature/audit"
+		conflictFile = "policy.txt"
+	}
+	baseRef := "main~2"
+	if id == "add-add" || id == "modify-delete" || id == "rebase-basic" || id == "merge-multi" || id == "cherry-pick" {
+		baseRef = "main~"
+	}
 	sha := func(ref string) string {
 		out, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "rev-parse", ref)
 		if err != nil {
@@ -291,15 +550,18 @@ func writeState(ctx context.Context, labsRoot, repo string) error {
 	}
 
 	state := State{
-		ExerciseID:     "merge-basic",
+		ExerciseID:     id,
 		CreatedAt:      time.Now().UTC().Format(time.RFC3339),
 		LabsRoot:       labsRoot,
-		BaseSHA:        sha("main~2"),
+		BaseSHA:        sha(baseRef),
 		MainSHA:        sha("main"),
-		FeatureSHA:     sha("feature/login"),
-		FeatureBranch:  "feature/login",
-		ConflictFile:   "login.go",
+		FeatureSHA:     sha(branch),
+		FeatureBranch:  branch,
+		ConflictFile:   conflictFile,
 		CheckerVersion: 0,
+	}
+	if id == "merge-multi" {
+		state.ConflictFiles = []string{"config.txt", "review.txt"}
 	}
 
 	data, err := json.MarshalIndent(state, "", "  ")

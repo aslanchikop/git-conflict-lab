@@ -479,11 +479,3 @@ func TestResolveTargetDir_VolumeRootLabsRoot(t *testing.T) {
 		t.Errorf("resolved path %q is the malformed drive-relative form", got)
 	}
 }
-
-func TestNotAvailableError_Message(t *testing.T) {
-	err := &NotAvailableError{Command: "generate", Milestone: "B"}
-	want := "generate is not implemented yet - it arrives in Milestone B."
-	if err.Error() != want {
-		t.Errorf("Error() = %q, want %q", err.Error(), want)
-	}
-}

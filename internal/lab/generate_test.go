@@ -146,6 +146,33 @@ func TestGenerateIgnoresHostileGlobalConfig(t *testing.T) {
 		t.Errorf("commit identity = %q, want generator identity", got)
 	}
 }
+
+func TestGeneratedLabMergesWithoutGlobalIdentity(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	for _, key := range []string{"GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"} {
+		value, exists := os.LookupEnv(key)
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if exists {
+				_ = os.Setenv(key, value)
+			} else {
+				_ = os.Unsetenv(key)
+			}
+		})
+	}
+	repo := generateInto(t)
+	for _, key := range []string{"user.name", "user.email"} {
+		if out, err := gitx.Run(context.Background(), repo, "config", "--local", "--get", key); err != nil || strings.TrimSpace(out) == "" {
+			t.Fatalf("local %s missing: %q, %v", key, out, err)
+		}
+	}
+	if out, err := gitx.Run(context.Background(), repo, "merge", "feature/login"); err == nil || !strings.Contains(out, "CONFLICT") {
+		t.Fatalf("expected conflict without global identity, got output %q, error %v", out, err)
+	}
+}
 func TestGenerateWritesStateManifest(t *testing.T) {
 	repo := generateInto(t)
 	data, err := os.ReadFile(filepath.Join(repo, stateDir, "state.json"))
