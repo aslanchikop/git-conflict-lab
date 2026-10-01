@@ -1,0 +1,25 @@
+# golangci-lint configuration. The enabled set stays close to the default
+# one plus a few high-signal linters; everything here must pass in CI.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - misspell
+    - unconvert
+    - unparam
+  exclusions:
+    rules:
+      # Tests intentionally construct odd inputs; keep them readable.
+      - path: _test\.go
+        linters:
+          - errcheck
+      # CLI output goes to stdout/stderr; a failed write leaves nothing
+      # useful to do, so the print family is intentionally unchecked.
+      - linters:
+          - errcheck
+        source: "fmt\\.Fprint*"
+
+formatters:
+  enable:
+    - gofmt
