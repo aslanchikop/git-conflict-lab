@@ -41,7 +41,7 @@ func TestVersionPrintsVersion(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("version: exit = %d, want %d", code, ExitOK)
 	}
-	if !strings.Contains(stdout, "git-conflict-lab 0.1.0-alpha.1") {
+	if !strings.Contains(stdout, "git-conflict-lab 0.1.0-alpha.3") {
 		t.Errorf("version output = %q, want version string", stdout)
 	}
 }
@@ -122,13 +122,29 @@ func TestStartTwiceFailsSafe(t *testing.T) {
 		t.Errorf("stderr = %q, want existing-dir notice", stderr)
 	}
 }
-func TestCheckNotAvailable(t *testing.T) {
-	_, stderr, code := runArgs("check")
-	if code != ExitNotImplemented {
-		t.Fatalf("check: exit = %d, want %d", code, ExitNotImplemented)
+
+func TestStartNamedAttempt(t *testing.T) {
+	labs := t.TempDir()
+	t.Setenv(labsRootEnv, labs)
+	_, stderr, code := runArgs("start", "add-add", "--attempt", "second")
+	if code != ExitOK {
+		t.Fatalf("start named attempt: exit=%d stderr=%q", code, stderr)
 	}
-	if !strings.Contains(stderr, "Milestone C") {
-		t.Errorf("stderr = %q, want Milestone C notice", stderr)
+	if _, err := os.Stat(filepath.Join(labs, "add-add-second", ".git")); err != nil {
+		t.Fatal(err)
+	}
+	_, _, code = runArgs("start", "add-add", "--attempt", "second")
+	if code != ExitFailure {
+		t.Fatalf("same attempt should fail safely, got %d", code)
+	}
+}
+func TestCheckOutsideLab(t *testing.T) {
+	_, stderr, code := runArgs("check")
+	if code != ExitFailure {
+		t.Fatalf("check: exit = %d, want %d", code, ExitFailure)
+	}
+	if !strings.Contains(stderr, "no exercise found") {
+		t.Errorf("stderr = %q, want no exercise notice", stderr)
 	}
 }
 
@@ -149,13 +165,13 @@ func TestCheckRejectsExtraArgs(t *testing.T) {
 	}
 }
 
-func TestHintNotAvailable(t *testing.T) {
+func TestHintOutsideLab(t *testing.T) {
 	_, stderr, code := runArgs("hint", "merge-basic")
-	if code != ExitNotImplemented {
-		t.Fatalf("hint merge-basic: exit = %d, want %d", code, ExitNotImplemented)
+	if code != ExitFailure {
+		t.Fatalf("hint merge-basic: exit = %d, want %d", code, ExitFailure)
 	}
-	if !strings.Contains(stderr, "Milestone D") {
-		t.Errorf("stderr = %q, want Milestone D notice", stderr)
+	if !strings.Contains(stderr, "no exercise found") {
+		t.Errorf("stderr = %q, want no exercise notice", stderr)
 	}
 }
 
