@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fffdf9" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Git Conflict Lab — Practice with real Git</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <svg
+      class="icon-sprite"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <symbol id="i-branch" viewBox="0 0 24 24">
+        <circle cx="6" cy="4" r="2" />
+        <circle cx="18" cy="6" r="2" />
+        <circle cx="12" cy="20" r="2" />
+        <path d="M6 6v5c0 4 6 4 6 7M18 8v3c0 4-6 4-6 7" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="10.8" cy="10.8" r="6.8" />
+        <path d="m16 16 4.5 4.5" />
+      </symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </symbol>
+      <symbol id="i-history" viewBox="0 0 24 24">
+        <path d="M4 8a9 9 0 1 1-.5 7M4 3v5h5M12 7v5l3 2" />
+      </symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24">
+        <path
+          d="M7 3h10v7a5 5 0 0 1-10 0V3ZM7 5H4v3a4 4 0 0 0 4 4M17 5h3v3a4 4 0 0 1-4 4M12 15v4M8 21h8"
+        />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M12 6c-2-2-5-2-9-2v15c4 0 7 0 9 2 2-2 5-2 9-2V4c-4 0-7 0-9 2ZM12 6v15"
+        />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path d="M4 12h15m-6-6 6 6-6 6" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="m4 12 5 5L20 6" />
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24">
+        <path
+          d="m12 2 1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2ZM20 17l.6 2.4L23 20l-2.4.6L20 23l-.6-2.4L17 20l2.4-.6L20 17Z"
+        />
+      </symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="12" height="12" rx="2" />
+        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+      </symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="18" rx="2" />
+        <path d="m6 8 4 4-4 4m7 0h5" />
+      </symbol>
+      <symbol id="i-info" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 11v6m0-10h.01" />
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="rail">
+        <a class="brand" href="#top" aria-label="Git Conflict Lab home">
+          <span class="brand-mark"
+            ><svg class="icon"><use href="#i-branch" /></svg
+          ></span>
+          <span
+            >git<span class="brand-separator">/</span>conflict<span
+              class="brand-separator"
+              >/</span
+            >lab</span
+          >
+        </a>
+        <span class="rail-caption">YOUR WORKSPACE</span>
+        <nav class="rail-nav" aria-label="Main navigation">
+          <a class="nav-item active" href="#exercises"
+            ><svg class="icon"><use href="#i-grid" /></svg><span>Exercises</span
+            ><b id="nav-count">04</b></a
+          >
+          <a class="nav-item" href="#learning-path"
+            ><svg class="icon"><use href="#i-book" /></svg
+            ><span>Learning path</span></a
+          >
+          <a class="nav-item" href="#attempts"
+            ><svg class="icon"><use href="#i-history" /></svg
+            ><span>My attempts</span></a
+          >
+          <a class="nav-item" href="#skills"
+            ><svg class="icon"><use href="#i-spark" /></svg
+            ><span>Git skills</span></a
+          >
+          <a class="nav-item" href="#achievements"
+            ><svg class="icon"><use href="#i-trophy" /></svg
+            ><span>Achievements</span></a
+          >
+          <a class="nav-item" href="#guide"
+            ><svg class="icon"><use href="#i-book" /></svg
+            ><span>Quick guide</span></a
+          >
+        </nav>
+        <div class="rail-progress">
+          <span class="rail-progress-label">YOUR JOURNEY</span>
+          <strong id="rail-progress-text">0 of 4 completed</strong>
+          <div class="progress-track" aria-hidden="true">
+            <span id="rail-progress-bar"></span>
+          </div>
+        </div>
+        <div class="rail-foot">
+          <span class="online-dot"></span
+          ><span
+            ><strong>Runs locally</strong
+            ><small>Your repos stay on this computer</small></span
+          >
+        </div>
+      </aside>
+
+      <main id="top">
+        <header class="topbar">
+          <div class="topbar-trail">LEARN GIT <span>/</span> CONFLICT LAB</div>
+          <label class="search-box"
+            ><svg class="icon"><use href="#i-search" /></svg
+            ><input
+              id="exercise-search"
+              type="search"
+              placeholder="Search exercises..."
+              autocomplete="off"
+              aria-label="Search exercises"
+            /><kbd>/</kbd></label
+          >
+          <div class="topbar-local">
+            <span class="online-dot"></span> OFFLINE READY
+          </div>
+        </header>
+
+        <div class="page-layout">
+          <div class="primary-column">
+            <section class="hero" aria-labelledby="hero-title">
+              <div class="hero-copy">
+                <span class="eyebrow"
+                  ><span class="eyebrow-rule"></span> REAL REPOS. REAL
+                  PRACTICE.</span
+                >
+                <h1 id="hero-title">
+                  GIT CONFLICTS,<br /><span>SOLVED.</span>
+                </h1>
+                <p>
+                  Build confidence one conflict at a time. Work in your own
+                  terminal, get clear feedback, and collect proof of your
+                  progress.
+                </p>
+                <a class="hero-action" href="#exercises"
+                  >Start learning <svg class="icon"><use href="#i-arrow" /></svg
+                ></a>
+              </div>
+              <div class="hero-diagram" aria-hidden="true">
+                <div class="diagram-label">A REAL MERGE, MADE CLEAR</div>
+                <div class="diagram-branch branch-main">
+                  <span class="diagram-node"></span><span>main</span
+                  ><code>password ≥ 8</code>
+                </div>
+                <div class="diagram-branch branch-feature">
+                  <span class="diagram-node"></span><span>feature/login</span
+                  ><code>user ≥ 3 · password ≥ 12</code>
+                </div>
+                <div class="diagram-connector"></div>
+                <div class="diagram-result">
+                  <span class="diagram-result-icon"
+                    ><svg class="icon"><use href="#i-check" /></svg></span
+                  ><span
+                    ><b>RESOLVED</b><small>Both branches preserved</small></span
+                  >
+                </div>
+              </div>
+            </section>
+
+            <section
+              class="section learning-path"
+              id="learning-path"
+              aria-labelledby="learning-path-title"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow section-eyebrow">START HERE</span>
+                  <h2 id="learning-path-title">
+                    A clear path through Git<span>.</span>
+                  </h2>
+                </div>
+              </div>
+              <div class="path-steps">
+                <article>
+                  <b>01</b>
+                  <h3>See what changed</h3>
+                  <p>
+                    Use <code>git status</code> and <code>git diff</code> to
+                    find the file and read both sides of a conflict.
+                  </p>
+                </article>
+                <article>
+                  <b>02</b>
+                  <h3>Resolve the file</h3>
+                  <p>
+                    Compare the common ancestor, main, and feature versions.
+                    Edit the working file to preserve the intended result.
+                  </p>
+                </article>
+                <article>
+                  <b>03</b>
+                  <h3>Finish and verify</h3>
+                  <p>
+                    Stage the file, finish the merge or rebase, then let the lab
+                    check your Git history and final content.
+                  </p>
+                </article>
+              </div>
+            </section>
+
+            <section
+              class="section"
+              id="exercises"
+              aria-labelledby="exercise-title"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow section-eyebrow"
+                    >THE PRACTICE LIBRARY</span
+                  >
+                  <h2 id="exercise-title">
+                    Find your next challenge<span>.</span>
+                  </h2>
+                </div>
+                <span class="section-meta" id="exercise-count"
+                  >6 EXERCISES</span
+                >
+              </div>
+              <div class="library-controls">
+                <div
+                  class="filter-group"
+                  aria-label="Filter exercises by difficulty"
+                >
+                  <button
+                    class="filter-button active"
+                    data-filter="all"
+                    aria-pressed="true"
+                  >
+                    All</button
+                  ><button
+                    class="filter-button"
+                    data-filter="easy"
+                    aria-pressed="false"
+                  >
+                    Easy</button
+                  ><button
+                    class="filter-button"
+                    data-filter="medium"
+                    aria-pressed="false"
+                  >
+                    Medium</button
+                  ><button
+                    class="filter-button"
+                    data-filter="hard"
+                    aria-pressed="false"
+                  >
+                    Hard
+                  </button>
+                </div>
+                <span class="library-hint">Complete them in any order</span>
+              </div>
+              <div class="challenge-list" id="exercise-grid" aria-busy="true">
+                <div class="skeleton-row"></div>
+                <div class="skeleton-row"></div>
+                <div class="skeleton-row"></div>
+              </div>
+              <p class="no-results" id="no-results" hidden>
+                No exercises match your search. Try another word or filter.
+              </p>
+            </section>
+
+            <section
+              class="workspace section"
+              id="workspace"
+              aria-labelledby="workspace-title"
+              hidden
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow section-eyebrow">CURRENT CHALLENGE</span>
+                  <h2 id="workspace-title">Your workspace<span>.</span></h2>
+                </div>
+                <span class="section-meta" id="workspace-id"></span>
+              </div>
+              <div class="workspace-card">
+                <div class="workspace-header">
+                  <span class="workspace-index">01 / OBJECTIVE</span
+                  ><span class="workspace-state" id="workspace-state"
+                    >NOT STARTED</span
+                  >
+                </div>
+                <h3 id="active-title"></h3>
+                <p class="workspace-description" id="active-description"></p>
+                <div class="concept-panel" id="concept-panel">
+                  <span class="eyebrow section-eyebrow">BEFORE YOU START</span>
+                  <p class="concept-principle" id="concept-principle"></p>
+                  <fieldset class="knowledge-check">
+                    <legend id="concept-question"></legend>
+                    <div id="concept-options" class="concept-options"></div>
+                  </fieldset>
+                  <p
+                    id="concept-feedback"
+                    class="concept-feedback"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                  ></p>
+                  <details class="pitfalls">
+                    <summary>Common mistakes to watch for</summary>
+                    <ul id="concept-pitfalls"></ul>
+                  </details>
+                </div>
+                <div class="path-box">
+                  <div>
+                    <span>REPOSITORY LOCATION</span
+                    ><code id="active-path"></code>
+                  </div>
+                  <button
+                    class="icon-button"
+                    id="copy-path"
+                    title="Copy path"
+                    aria-label="Copy path"
+                  >
+                    <svg class="icon"><use href="#i-copy" /></svg>
+                  </button>
+                </div>
+                <div class="steps-title">
+                  <svg class="icon"><use href="#i-terminal" /></svg
+                  ><span>YOUR TERMINAL CHECKLIST</span>
+                </div>
+                <ol class="steps">
+                  <li>
+                    <span class="step-num">1</span>
+                    <div>
+                      <strong>Enter the lab</strong
+                      ><code id="command-cd"></code>
+                    </div>
+                    <button class="copy-command" data-command="cd">Copy</button>
+                  </li>
+                  <li>
+                    <span class="step-num">2</span>
+                    <div>
+                      <strong>Trigger the conflict</strong
+                      ><code id="command-merge"></code>
+                    </div>
+                    <button class="copy-command" data-command="merge">
+                      Copy
+                    </button>
+                  </li>
+                  <li>
+                    <span class="step-num">3</span>
+                    <div>
+                      <strong>Resolve and finish</strong
+                      ><span
+                        class="step-description"
+                        id="resolution-step"
+                      ></span>
+                    </div>
+                  </li>
+                </ol>
+                <div class="workspace-actions">
+                  <button class="primary-button" id="check-button">
+                    <svg class="icon"><use href="#i-check" /></svg
+                    ><span>Check my solution</span></button
+                  ><button class="secondary-button" id="hint-button">
+                    <svg class="icon"><use href="#i-spark" /></svg
+                    ><span>Reveal a hint</span>
+                  </button>
+                </div>
+                <div
+                  class="feedback"
+                  id="feedback"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <svg class="icon"><use href="#i-info" /></svg
+                  ><span id="feedback-text"
+                    >Your next step will appear here.</span
+                  >
+                </div>
+                <div class="hint-list" id="hint-list" aria-live="polite"></div>
+              </div>
+              <div class="lesson-card" id="lesson-card" aria-live="polite">
+                <div class="lesson-heading">
+                  <div>
+                    <span class="eyebrow section-eyebrow"
+                      >UNDERSTAND THE CONFLICT</span
+                    >
+                    <h3>Three versions, one decision<span>.</span></h3>
+                  </div>
+                  <button class="secondary-button" id="refresh-inspection">
+                    Refresh file view
+                  </button>
+                </div>
+                <p id="lesson-explanation">
+                  Compare the common ancestor with the changes made by each
+                  branch.
+                </p>
+                <div
+                  class="file-tabs"
+                  id="file-tabs"
+                  aria-label="Choose conflict file"
+                ></div>
+                <div class="version-grid" id="version-grid"></div>
+                <div class="review-panel" id="review-panel"></div>
+              </div>
+            </section>
+
+            <section
+              class="section"
+              id="attempts"
+              aria-labelledby="attempts-title"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow section-eyebrow"
+                    >PICK UP WHERE YOU LEFT OFF</span
+                  >
+                  <h2 id="attempts-title">Your attempts<span>.</span></h2>
+                </div>
+              </div>
+              <div class="attempt-list" id="attempt-list" aria-busy="true">
+                <div class="skeleton-row"></div>
+              </div>
+            </section>
+
+            <section
+              class="section skills-section"
+              id="skills"
+              aria-labelledby="skills-title"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow section-eyebrow"
+                    >PROVEN BY YOUR REPOS</span
+                  >
+                  <h2 id="skills-title">Your Git skills<span>.</span></h2>
+                </div>
+                <span class="section-meta" id="skill-count"></span>
+              </div>
+              <p class="skills-intro">
+                A skill lights up when you complete an exercise that practices
+                it. Your Git history is checked again whenever the page loads.
+              </p>
+              <div class="skill-grid" id="skill-grid"></div>
+            </section>
+
+            <section
+              class="section achievements-section"
+              id="achievements"
+              aria-labelledby="achievements-title"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="eyebrow section-eyebrow"
+                    >MILESTONES WORTH KEEPING</span
+                  >
+                  <h2 id="achievements-title">Achievements<span>.</span></h2>
+                </div>
+                <span class="section-meta" id="achievement-count"
+                  >0 / 7 UNLOCKED</span
+                >
+              </div>
+              <div class="achievement-grid" id="achievement-grid"></div>
+            </section>
+          </div>
+
+          <aside class="insights-column" aria-label="Learning overview">
+            <div class="insight-card progress-card">
+              <span class="insight-kicker">YOUR PROGRESS</span>
+              <div class="progress-number">
+                <strong id="completed-count">0</strong><span>/ 6</span>
+              </div>
+              <p>scenarios completed</p>
+              <div class="progress-track"><span id="progress-bar"></span></div>
+              <small
+                >Every completed challenge is checked against real Git
+                history.</small
+              >
+            </div>
+            <div class="insight-card earn-card">
+              <div class="insight-icon">
+                <svg class="icon"><use href="#i-trophy" /></svg>
+              </div>
+              <span class="insight-kicker">KEEP YOUR MOMENTUM</span>
+              <h3>Earn your first badge.</h3>
+              <p>Solve a challenge to unlock your first achievement.</p>
+              <a href="#achievements"
+                >See achievements <svg class="icon"><use href="#i-arrow" /></svg
+              ></a>
+            </div>
+            <div class="insight-card guide-card" id="guide">
+              <span class="insight-kicker">HOW IT WORKS</span>
+              <h3>Three simple steps.</h3>
+              <div class="guide-step">
+                <b>01</b
+                ><span
+                  ><strong>Pick a scenario</strong
+                  ><small>We create an isolated Git repo.</small></span
+                >
+              </div>
+              <div class="guide-step">
+                <b>02</b
+                ><span
+                  ><strong>Resolve in your terminal</strong
+                  ><small>Use the same commands as real work.</small></span
+                >
+              </div>
+              <div class="guide-step">
+                <b>03</b
+                ><span
+                  ><strong>Check and learn</strong
+                  ><small>Get feedback and unlock progress.</small></span
+                >
+              </div>
+            </div>
+          </aside>
+        </div>
+        <footer>
+          GIT CONFLICT LAB <span>·</span> REAL GIT, REAL PROGRESS
+          <span>·</span> 100% LOCAL
+        </footer>
+      </main>
+    </div>
+
+    <dialog
+      class="success-dialog"
+      id="success-dialog"
+      aria-labelledby="success-title"
+    >
+      <div class="celebration" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span
+        ><span></span><span></span><span></span>
+      </div>
+      <div class="success-mark">
+        <svg class="icon"><use href="#i-check" /></svg>
+      </div>
+      <span class="eyebrow">CHALLENGE COMPLETE</span>
+      <h2 id="success-title">Nicely resolved.</h2>
+      <p id="success-message">Your Git history checks out.</p>
+      <div class="unlocked-badges" id="unlocked-badges"></div>
+      <button class="primary-button" id="success-close">
+        Keep learning <svg class="icon"><use href="#i-arrow" /></svg>
+      </button>
+    </dialog>
+    <div
+      class="screen-loading"
+      id="screen-loading"
+      role="status"
+      aria-live="polite"
+      hidden
+    >
+      <div class="loading-panel">
+        <span class="loading-orbit" aria-hidden="true"
+          ><svg class="icon"><use href="#i-branch" /></svg></span
+        ><strong id="screen-loading-text"
+          >Building your practice repository…</strong
+        ><small>Preparing real Git branches on your computer.</small
+        ><span class="loading-line" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="alert" hidden></div>
+  </body>
+</html>
