@@ -41,7 +41,7 @@ func TestVersionPrintsVersion(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("version: exit = %d, want %d", code, ExitOK)
 	}
-	if !strings.Contains(stdout, "git-conflict-lab 0.1.0-alpha.3") {
+	if !strings.Contains(stdout, "git-conflict-lab 0.1.0") {
 		t.Errorf("version output = %q, want version string", stdout)
 	}
 }

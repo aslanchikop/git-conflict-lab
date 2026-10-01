@@ -27,7 +27,7 @@ const (
 	ExitUsage = 2
 )
 
-var versionString = "0.1.0-alpha.3"
+var versionString = "0.1.0"
 
 const usageText = `git-conflict-lab - practice real Git conflict resolution offline
 
