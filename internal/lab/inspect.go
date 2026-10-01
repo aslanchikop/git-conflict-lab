@@ -44,18 +44,22 @@ func InspectFile(ctx context.Context, dir, selected string) (Inspection, error) 
 	if err != nil {
 		return Inspection{}, err
 	}
-	files := map[string]string{"merge-basic": "login.go", "add-add": "notes.txt", "modify-delete": "legacy.txt", "rebase-basic": "settings.txt", "merge-multi": "config.txt", "cherry-pick": "policy.txt"}
-	branches := map[string]string{"merge-basic": "feature/login", "add-add": "feature/notes", "modify-delete": "feature/cleanup", "rebase-basic": "feature/fast", "merge-multi": "feature/release", "cherry-pick": "feature/audit"}
-	file, ok := files[state.ExerciseID]
-	if !ok || state.ConflictFile != file || state.FeatureBranch != branches[state.ExerciseID] || !commitHash.MatchString(state.BaseSHA) || !commitHash.MatchString(state.MainSHA) || !commitHash.MatchString(state.FeatureSHA) {
+	sc, ok := LookupScenario(state.ExerciseID)
+	if !ok || state.ConflictFile != sc.File || state.FeatureBranch != sc.Branch || !commitHash.MatchString(state.BaseSHA) || !commitHash.MatchString(state.MainSHA) || !commitHash.MatchString(state.FeatureSHA) {
 		return Inspection{}, fmt.Errorf("invalid exercise state")
 	}
-	available := []string{file}
-	if state.ExerciseID == "merge-multi" {
-		if len(state.ConflictFiles) != 2 || state.ConflictFiles[0] != "config.txt" || state.ConflictFiles[1] != "review.txt" {
+	available := []string{sc.File}
+	file := sc.File
+	if len(sc.Files) > 1 {
+		if len(state.ConflictFiles) != len(sc.Files) {
 			return Inspection{}, fmt.Errorf("invalid exercise file list")
 		}
-		available = state.ConflictFiles
+		for i, name := range sc.Files {
+			if state.ConflictFiles[i] != name {
+				return Inspection{}, fmt.Errorf("invalid exercise file list")
+			}
+		}
+		available = append([]string(nil), sc.Files...)
 	}
 	if selected != "" {
 		found := false
@@ -87,7 +91,7 @@ func InspectFile(ctx context.Context, dir, selected string) (Inspection, error) 
 		}
 		return FileVersion{Exists: true, Content: output}, nil
 	}
-	view.Base, err = readCommit(state.BaseSHA, state.ExerciseID == "add-add")
+	view.Base, err = readCommit(state.BaseSHA, sc.BaseAbsent)
 	if err != nil {
 		return Inspection{}, err
 	}
@@ -95,7 +99,7 @@ func InspectFile(ctx context.Context, dir, selected string) (Inspection, error) 
 	if err != nil {
 		return Inspection{}, err
 	}
-	view.Feature, err = readCommit(state.FeatureSHA, state.ExerciseID == "modify-delete")
+	view.Feature, err = readCommit(state.FeatureSHA, sc.FeatureAbsent)
 	if err != nil {
 		return Inspection{}, err
 	}

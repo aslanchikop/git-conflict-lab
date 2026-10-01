@@ -101,7 +101,7 @@ func Generate(ctx context.Context, labsRoot, name string) (string, error) {
 
 // GenerateAs creates another named attempt without replacing an existing one.
 func GenerateAs(ctx context.Context, labsRoot, id, folder string) (string, error) {
-	if id != "merge-basic" && id != "add-add" && id != "modify-delete" && id != "rebase-basic" && id != "merge-multi" && id != "cherry-pick" {
+	if _, ok := LookupScenario(id); !ok {
 		return "", fmt.Errorf("unknown exercise %q", id)
 	}
 	candidate, err := ResolveTargetDir(labsRoot, folder)
@@ -122,42 +122,57 @@ func GenerateAs(ctx context.Context, labsRoot, id, folder string) (string, error
 		return "", fmt.Errorf("%w: cannot create exercise directory %s: %v", ErrUnsafeLocation, candidate, err)
 	}
 
-	var generateErr error
-	switch id {
-	case "merge-basic":
-		generateErr = generateMergeBasic(ctx, candidate)
-	case "add-add":
-		generateErr = generateAddAdd(ctx, candidate)
-	case "modify-delete":
-		generateErr = generateModifyDelete(ctx, candidate)
-	case "rebase-basic":
-		generateErr = generateRebaseBasic(ctx, candidate)
-	case "merge-multi":
-		generateErr = generateMergeMulti(ctx, candidate)
-	case "cherry-pick":
-		generateErr = generateCherryPick(ctx, candidate)
-	default:
-		return "", fmt.Errorf("unknown exercise %q", id)
-	}
-	if generateErr != nil {
-		return "", generateErr
-	}
-
-	if err := writeState(ctx, labsRoot, candidate, id); err != nil {
-		return "", err
-	}
-
-	// Keep the user's `git status` clean: the advisory manifest lives in
-	// the worktree, so exclude it via the repository-local exclude file
-	// (never the global config, never a tracked .gitignore).
-	if err := excludeManifestDir(candidate); err != nil {
-		return "", err
-	}
-	if err := configureLabGit(candidate); err != nil {
+	// The candidate did not exist moments ago (re-verified above), so any
+	// partially generated directory is debris from this very call. Remove
+	// it on failure so a retry starts clean instead of being refused with
+	// ErrTargetNotEmpty (review finding B-003).
+	if err := populateExercise(ctx, labsRoot, candidate, id); err != nil {
+		_ = os.RemoveAll(candidate)
 		return "", err
 	}
 
 	return candidate, nil
+}
+
+// populateExercise runs every post-creation step of GenerateAs: the
+// scenario-specific Git history, the advisory manifest, the
+// repository-local exclude entry, and the lab-local commit identity.
+func populateExercise(ctx context.Context, labsRoot, repo, id string) error {
+	if err := generateScenario(ctx, id, repo); err != nil {
+		return err
+	}
+	if err := writeState(ctx, labsRoot, repo, id); err != nil {
+		return err
+	}
+	// Keep the user's `git status` clean: the advisory manifest lives in
+	// the worktree, so exclude it via the repository-local exclude file
+	// (never the global config, never a tracked .gitignore).
+	if err := excludeManifestDir(repo); err != nil {
+		return err
+	}
+	return configureLabGit(repo)
+}
+
+// generateScenario builds the scenario-specific Git history in a freshly
+// created repository. It is a package variable so tests can inject
+// failures and verify the cleanup behavior of GenerateAs.
+var generateScenario = func(ctx context.Context, id, repo string) error {
+	switch id {
+	case "merge-basic":
+		return generateMergeBasic(ctx, repo)
+	case "add-add":
+		return generateAddAdd(ctx, repo)
+	case "modify-delete":
+		return generateModifyDelete(ctx, repo)
+	case "rebase-basic":
+		return generateRebaseBasic(ctx, repo)
+	case "merge-multi":
+		return generateMergeMulti(ctx, repo)
+	case "cherry-pick":
+		return generateCherryPick(ctx, repo)
+	default:
+		return fmt.Errorf("unknown exercise %q", id)
+	}
 }
 
 // configureLabGit gives beginners a working commit identity in this one
@@ -515,31 +530,9 @@ func generateCherryPick(ctx context.Context, repo string) error {
 
 // writeState records the generated scenario in the advisory manifest.
 func writeState(ctx context.Context, labsRoot, repo, id string) error {
-	branch := "feature/login"
-	conflictFile := "login.go"
-	if id == "add-add" {
-		branch = "feature/notes"
-		conflictFile = "notes.txt"
-	}
-	if id == "modify-delete" {
-		branch = "feature/cleanup"
-		conflictFile = "legacy.txt"
-	}
-	if id == "rebase-basic" {
-		branch = "feature/fast"
-		conflictFile = "settings.txt"
-	}
-	if id == "merge-multi" {
-		branch = "feature/release"
-		conflictFile = "config.txt"
-	}
-	if id == "cherry-pick" {
-		branch = "feature/audit"
-		conflictFile = "policy.txt"
-	}
-	baseRef := "main~2"
-	if id == "add-add" || id == "modify-delete" || id == "rebase-basic" || id == "merge-multi" || id == "cherry-pick" {
-		baseRef = "main~"
+	sc, ok := LookupScenario(id)
+	if !ok {
+		return fmt.Errorf("unknown exercise %q", id)
 	}
 	sha := func(ref string) string {
 		out, err := gitx.RunWithEnv(ctx, repo, baseEnv(fixedDate), "rev-parse", ref)
@@ -553,15 +546,15 @@ func writeState(ctx context.Context, labsRoot, repo, id string) error {
 		ExerciseID:     id,
 		CreatedAt:      time.Now().UTC().Format(time.RFC3339),
 		LabsRoot:       labsRoot,
-		BaseSHA:        sha(baseRef),
+		BaseSHA:        sha(sc.BaseRef),
 		MainSHA:        sha("main"),
-		FeatureSHA:     sha(branch),
-		FeatureBranch:  branch,
-		ConflictFile:   conflictFile,
+		FeatureSHA:     sha(sc.Branch),
+		FeatureBranch:  sc.Branch,
+		ConflictFile:   sc.File,
 		CheckerVersion: 0,
 	}
-	if id == "merge-multi" {
-		state.ConflictFiles = []string{"config.txt", "review.txt"}
+	if len(sc.Files) > 1 {
+		state.ConflictFiles = append([]string(nil), sc.Files...)
 	}
 
 	data, err := json.MarshalIndent(state, "", "  ")

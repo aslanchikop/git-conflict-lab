@@ -214,23 +214,19 @@ func runStart(w, errW io.Writer, args []string) int {
 	fmt.Fprintln(w, "Next steps:")
 	fmt.Fprintf(w, "  cd \"%s\"\n", strings.ReplaceAll(created, "\"", "\\\""))
 	fmt.Fprintln(w, "  git log --oneline --all")
-	branch := "feature/login"
-	if args[0] == "add-add" {
-		branch = "feature/notes"
+	sc, ok := lab.LookupScenario(args[0])
+	if !ok {
+		fmt.Fprintf(errW, "Error: unknown exercise %q\n", args[0])
+		return ExitUsage
 	}
-	if args[0] == "modify-delete" {
-		branch = "feature/cleanup"
-	}
-	if args[0] == "merge-multi" {
-		branch = "feature/release"
-	}
-	if args[0] == "rebase-basic" {
-		fmt.Fprintln(w, "  git switch feature/fast")
+	switch sc.Strategy {
+	case lab.StrategyRebase:
+		fmt.Fprintf(w, "  git switch %s\n", sc.Branch)
 		fmt.Fprintln(w, "  git rebase main   # this will conflict, on purpose")
-	} else if args[0] == "cherry-pick" {
-		fmt.Fprintln(w, "  git cherry-pick feature/audit   # this will conflict, on purpose")
-	} else {
-		fmt.Fprintf(w, "  git merge %s   # this will conflict, on purpose\n", branch)
+	case lab.StrategyCherryPick:
+		fmt.Fprintf(w, "  git cherry-pick %s   # this will conflict, on purpose\n", sc.Branch)
+	default:
+		fmt.Fprintf(w, "  git merge %s   # this will conflict, on purpose\n", sc.Branch)
 	}
 	fmt.Fprintf(w, "  git-conflict-lab hint %s   # optional help\n", args[0])
 	fmt.Fprintln(w, "  git-conflict-lab check")

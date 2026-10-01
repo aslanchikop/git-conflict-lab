@@ -54,19 +54,20 @@ func Check(ctx context.Context, dir string) (CheckResult, error) {
 		return CheckResult{}, err
 	}
 	result := CheckResult{ExerciseID: state.ExerciseID}
-	if state.ExerciseID == "rebase-basic" {
+	sc, ok := LookupScenario(state.ExerciseID)
+	if !ok {
+		return result, fmt.Errorf("exercise state is incomplete or unsupported")
+	}
+	if sc.Strategy == StrategyRebase {
 		return checkRebase(ctx, state, root)
 	}
-	if state.ExerciseID == "cherry-pick" {
+	if sc.Strategy == StrategyCherryPick {
 		return checkCherryPick(ctx, state, root)
 	}
 	if state.MainSHA == "" || state.FeatureSHA == "" || state.BaseSHA == "" {
 		return result, fmt.Errorf("exercise state is incomplete or unsupported")
 	}
-	if (state.ExerciseID != "merge-basic" || state.FeatureBranch != "feature/login" || state.ConflictFile != "login.go") &&
-		(state.ExerciseID != "add-add" || state.FeatureBranch != "feature/notes" || state.ConflictFile != "notes.txt") &&
-		(state.ExerciseID != "modify-delete" || state.FeatureBranch != "feature/cleanup" || state.ConflictFile != "legacy.txt") &&
-		(state.ExerciseID != "merge-multi" || state.FeatureBranch != "feature/release" || state.ConflictFile != "config.txt") {
+	if state.FeatureBranch != sc.Branch || state.ConflictFile != sc.File {
 		return result, fmt.Errorf("exercise state is incomplete or unsupported")
 	}
 	git := func(args ...string) (string, error) { return gitx.Run(ctx, root, args...) }
@@ -189,7 +190,8 @@ func Check(ctx context.Context, dir string) (CheckResult, error) {
 
 func checkCherryPick(ctx context.Context, state State, root string) (CheckResult, error) {
 	result := CheckResult{ExerciseID: state.ExerciseID}
-	if state.FeatureBranch != "feature/audit" || state.ConflictFile != "policy.txt" || state.BaseSHA == "" || state.MainSHA == "" || state.FeatureSHA == "" {
+	sc, ok := LookupScenario(state.ExerciseID)
+	if !ok || sc.Strategy != StrategyCherryPick || state.FeatureBranch != sc.Branch || state.ConflictFile != sc.File || state.BaseSHA == "" || state.MainSHA == "" || state.FeatureSHA == "" {
 		return result, fmt.Errorf("exercise state is incomplete or unsupported")
 	}
 	git := func(args ...string) (string, error) { return gitx.Run(ctx, root, args...) }
@@ -273,7 +275,8 @@ func checkCherryPick(ctx context.Context, state State, root string) (CheckResult
 
 func checkRebase(ctx context.Context, state State, root string) (CheckResult, error) {
 	result := CheckResult{ExerciseID: state.ExerciseID}
-	if state.FeatureBranch != "feature/fast" || state.ConflictFile != "settings.txt" ||
+	sc, ok := LookupScenario(state.ExerciseID)
+	if !ok || sc.Strategy != StrategyRebase || state.FeatureBranch != sc.Branch || state.ConflictFile != sc.File ||
 		state.MainSHA == "" || state.FeatureSHA == "" || state.BaseSHA == "" {
 		return result, fmt.Errorf("exercise state is incomplete or unsupported")
 	}
