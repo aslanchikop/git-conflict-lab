@@ -25,7 +25,7 @@ func TestHelpListsAllCommands(t *testing.T) {
 		if code != ExitOK {
 			t.Fatalf("help: exit = %d, want %d", code, ExitOK)
 		}
-		for _, want := range []string{"list", "start", "check", "hint", "version", "help"} {
+		for _, want := range []string{"list", "start", "reset", "check", "hint", "clean", "doctor", "ui", "version", "help"} {
 			if !strings.Contains(stdout, want) {
 				t.Errorf("help output missing command %q", want)
 			}
@@ -251,5 +251,127 @@ func TestRunMapsExitCodes(t *testing.T) {
 	t.Setenv(labsRootEnv, t.TempDir())
 	if got := Run([]string{"start", "merge-basic"}); got != ExitOK {
 		t.Errorf("Run(start merge-basic) = %d, want %d", got, ExitOK)
+	}
+}
+
+func TestResetRegeneratesAttempt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("generates a real Git repository")
+	}
+	labs := t.TempDir()
+	t.Setenv(labsRootEnv, labs)
+
+	if _, _, code := runArgs("start", "merge-basic"); code != ExitOK {
+		t.Fatalf("start: exit = %d, want %d", code, ExitOK)
+	}
+	junk := filepath.Join(labs, "merge-basic", "junk.txt")
+	if err := os.WriteFile(junk, []byte("leftover"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, _, code := runArgs("reset", "merge-basic")
+	if code != ExitOK {
+		t.Fatalf("reset: exit = %d, stdout = %q", code, stdout)
+	}
+	if !strings.Contains(stdout, "Exercise regenerated") {
+		t.Errorf("stdout = %q, want regenerated notice", stdout)
+	}
+	if _, err := os.Stat(junk); !os.IsNotExist(err) {
+		t.Error("reset kept files from the previous attempt")
+	}
+	if _, err := os.Stat(filepath.Join(labs, "merge-basic", ".git")); err != nil {
+		t.Errorf("repository missing after reset: %v", err)
+	}
+}
+
+func TestResetUnknownExercise(t *testing.T) {
+	_, stderr, code := runArgs("reset", "unknown-id")
+	if code != ExitUsage {
+		t.Fatalf("reset unknown-id: exit = %d, want %d", code, ExitUsage)
+	}
+	if !strings.Contains(stderr, "Unknown exercise") {
+		t.Errorf("stderr = %q, want friendly unknown-exercise message", stderr)
+	}
+}
+
+func TestResetRefusesNonLabDirectory(t *testing.T) {
+	labs := t.TempDir()
+	t.Setenv(labsRootEnv, labs)
+	if err := os.MkdirAll(filepath.Join(labs, "merge-basic"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, stderr, code := runArgs("reset", "merge-basic")
+	if code != ExitFailure {
+		t.Fatalf("reset non-lab: exit = %d, want %d", code, ExitFailure)
+	}
+	if !strings.Contains(stderr, "nothing was deleted") {
+		t.Errorf("stderr = %q, want refusal notice", stderr)
+	}
+	if _, err := os.Stat(filepath.Join(labs, "merge-basic")); err != nil {
+		t.Fatal("refused reset must leave the directory in place")
+	}
+}
+
+func TestCleanDryRunThenRemove(t *testing.T) {
+	labs := t.TempDir()
+	t.Setenv(labsRootEnv, labs)
+	manifest := filepath.Join(labs, "merge-basic", ".git-conflict-lab", "state.json")
+	if err := os.MkdirAll(filepath.Dir(manifest), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifest, []byte(`{"exercise_id":"merge-basic"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, _, code := runArgs("clean")
+	if code != ExitOK || !strings.Contains(stdout, "dry run") || !strings.Contains(stdout, "merge-basic") {
+		t.Fatalf("clean dry run: exit = %d, stdout = %q", code, stdout)
+	}
+	if _, err := os.Stat(manifest); err != nil {
+		t.Fatal("dry run must not delete anything")
+	}
+
+	stdout, _, code = runArgs("clean", "--yes")
+	if code != ExitOK || !strings.Contains(stdout, "Removed 1") {
+		t.Fatalf("clean --yes: exit = %d, stdout = %q", code, stdout)
+	}
+	if _, err := os.Stat(manifest); !os.IsNotExist(err) {
+		t.Error("attempt must be removed after clean --yes")
+	}
+}
+
+func TestCleanWithoutLabsRoot(t *testing.T) {
+	t.Setenv(labsRootEnv, filepath.Join(t.TempDir(), "missing"))
+	stdout, _, code := runArgs("clean")
+	if code != ExitOK || !strings.Contains(stdout, "No exercise attempts found") {
+		t.Fatalf("clean without labs root: exit = %d, stdout = %q", code, stdout)
+	}
+}
+
+func TestCleanRejectsUnknownFlags(t *testing.T) {
+	_, _, code := runArgs("clean", "--bogus")
+	if code != ExitUsage {
+		t.Fatalf("clean --bogus: exit = %d, want %d", code, ExitUsage)
+	}
+}
+
+func TestDoctorReportsEnvironment(t *testing.T) {
+	t.Setenv(labsRootEnv, t.TempDir())
+	stdout, _, code := runArgs("doctor")
+	if code != ExitOK {
+		t.Fatalf("doctor: exit = %d, want %d", code, ExitOK)
+	}
+	for _, want := range []string{"Git:", "Labs directory:", "Attempts:", "Environment ready"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("doctor output missing %q:\n%s", want, stdout)
+		}
+	}
+}
+
+func TestDoctorRejectsExtraArgs(t *testing.T) {
+	_, _, code := runArgs("doctor", "extra")
+	if code != ExitUsage {
+		t.Fatalf("doctor extra: exit = %d, want %d", code, ExitUsage)
 	}
 }

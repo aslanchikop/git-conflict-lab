@@ -214,8 +214,8 @@ func excludeManifestDir(repo string) error {
 
 // gitRun is a helper that runs git inside the exercise repository with
 // the generation environment applied.
-func gitRun(ctx context.Context, dir string, date string, args ...string) (string, error) {
-	return gitx.RunWithEnv(ctx, dir, baseEnv(date), args...)
+func gitRun(ctx context.Context, dir string, args ...string) (string, error) {
+	return gitx.RunWithEnv(ctx, dir, baseEnv(fixedDate), args...)
 }
 
 // gitCommit runs git commit with the fixed generator identity.
@@ -267,7 +267,7 @@ func Login(user, password string) bool {
 	}
 
 	// feature/login: same region, different implementation.
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/login"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "-b", "feature/login"); err != nil {
 		return fmt.Errorf("cannot create feature/login: %w", err)
 	}
 	loginFeature := `package auth
@@ -291,7 +291,7 @@ func Login(user, password string) bool {
 	}
 
 	// main, commit 1: doc comment above the function (independent edit).
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "main"); err != nil {
 		return fmt.Errorf("cannot switch back to main: %w", err)
 	}
 	loginDoc := `package auth
@@ -352,7 +352,7 @@ func generateAddAdd(ctx context.Context, repo string) error {
 	if _, err := gitCommit(ctx, repo, "commit", "-m", "chore: initialize notes exercise"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/notes"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "-b", "feature/notes"); err != nil {
 		return err
 	}
 	if err := writeFileSync(filepath.Join(repo, "notes.txt"), []byte("Feature note: document the review steps.\n")); err != nil {
@@ -364,7 +364,7 @@ func generateAddAdd(ctx context.Context, repo string) error {
 	if _, err := gitCommit(ctx, repo, "commit", "-m", "docs: add feature notes"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "main"); err != nil {
 		return err
 	}
 	if err := writeFileSync(filepath.Join(repo, "notes.txt"), []byte("Main note: record the release checklist.\n")); err != nil {
@@ -392,16 +392,16 @@ func generateModifyDelete(ctx context.Context, repo string) error {
 	if _, err := gitCommit(ctx, repo, "commit", "-m", "docs: add legacy instructions"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/cleanup"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "-b", "feature/cleanup"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "rm", "legacy.txt"); err != nil {
+	if _, err := gitRun(ctx, repo, "rm", "legacy.txt"); err != nil {
 		return err
 	}
 	if _, err := gitCommit(ctx, repo, "commit", "-m", "chore: remove obsolete instructions"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "main"); err != nil {
 		return err
 	}
 	if err := writeFileSync(filepath.Join(repo, "legacy.txt"), []byte("Legacy integration instructions, revised.\n")); err != nil {
@@ -430,7 +430,7 @@ func generateRebaseBasic(ctx context.Context, repo string) error {
 	if _, err := gitCommit(ctx, repo, "commit", "-m", "chore: add default mode"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/fast"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "-b", "feature/fast"); err != nil {
 		return err
 	}
 	if err := writeFileSync(file, []byte("mode=fast\n")); err != nil {
@@ -442,7 +442,7 @@ func generateRebaseBasic(ctx context.Context, repo string) error {
 	if _, err := gitCommit(ctx, repo, "commit", "-m", "feat: enable fast mode"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "main"); err != nil {
 		return err
 	}
 	if err := writeFileSync(file, []byte("mode=safe\n")); err != nil {
@@ -480,7 +480,7 @@ func generateMergeMulti(ctx context.Context, repo string) error {
 	if err := commit("chore: add deployment defaults"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/release"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "-b", "feature/release"); err != nil {
 		return err
 	}
 	if err := write("timeout=60", "review=automated"); err != nil {
@@ -489,7 +489,7 @@ func generateMergeMulti(ctx context.Context, repo string) error {
 	if err := commit("feat: prepare automated release"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "main"); err != nil {
 		return err
 	}
 	if err := write("timeout=45", "review=manual"); err != nil {
@@ -516,13 +516,13 @@ func generateCherryPick(ctx context.Context, repo string) error {
 	if err := commit("audit=off", "chore: add audit policy"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "-b", "feature/audit"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "-b", "feature/audit"); err != nil {
 		return err
 	}
 	if err := commit("audit=verbose", "feat: add verbose audit"); err != nil {
 		return err
 	}
-	if _, err := gitRun(ctx, repo, fixedDate, "checkout", "main"); err != nil {
+	if _, err := gitRun(ctx, repo, "checkout", "main"); err != nil {
 		return err
 	}
 	return commit("audit=required", "feat: require audit")

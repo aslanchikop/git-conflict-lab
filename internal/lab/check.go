@@ -102,12 +102,13 @@ func Check(ctx context.Context, dir string) (CheckResult, error) {
 		return result, err
 	}
 	if strings.TrimSpace(unmerged) != "" {
-		if state.ExerciseID == "merge-multi" {
+		switch state.ExerciseID {
+		case "merge-multi":
 			paths, _ := git("diff", "--name-only", "--diff-filter=U")
 			result.Message = "The merge still has unresolved files: " + strings.Join(strings.Fields(paths), ", ") + ". Resolve and stage every file."
-		} else if state.ExerciseID == "modify-delete" {
+		case "modify-delete":
 			result.Message = "The merge still has unresolved files. Use git rm legacy.txt to accept the deletion."
-		} else {
+		default:
 			result.Message = fmt.Sprintf("The merge still has unresolved files. Resolve %s, then run git add %s.", state.ConflictFile, state.ConflictFile)
 		}
 		return result, nil

@@ -92,13 +92,24 @@ func sameDir(a, b string) bool {
 }
 
 // ResolveTargetDir validates the exercise ID (name, untrusted input) and
-// resolves it to a safe directory path under labsRoot.
+// resolves it to a safe directory path under labsRoot. Existing non-empty
+// directories are rejected; resolveTargetDir with allowExisting serves
+// commands that operate on already generated attempts.
 //
 // labsRoot is the designated directory that will contain exercise
 // directories; it must already exist. The labs root itself may live inside
 // a git repository - only directories strictly between the candidate and
 // the labs root are checked for unrelated nested work trees.
 func ResolveTargetDir(labsRoot, name string) (string, error) {
+	return resolveTargetDir(labsRoot, name, false)
+}
+
+// resolveTargetDir implements ResolveTargetDir. With allowExisting, an
+// existing non-empty directory resolves instead of being rejected. Every
+// other safety rule still applies: name validation, symlink refusal, and
+// containment inside the labs root, so callers can operate on existing
+// attempts without new traversal risks.
+func resolveTargetDir(labsRoot, name string, allowExisting bool) (string, error) {
 	// TOCTOU boundary: generation re-verifies the path before creation.
 	// (a) Empty or whitespace-only name.
 	if strings.TrimSpace(name) == "" {
@@ -185,7 +196,7 @@ func ResolveTargetDir(labsRoot, name string) (string, error) {
 		if readErr != nil {
 			return "", fmt.Errorf("%w: cannot inspect existing directory %s: %v", ErrUnsafeLocation, candidate, readErr)
 		}
-		if len(entries) > 0 {
+		if len(entries) > 0 && !allowExisting {
 			return "", fmt.Errorf("%w: %s", ErrTargetNotEmpty, candidate)
 		}
 		// An empty existing directory is allowed; return its resolved path.

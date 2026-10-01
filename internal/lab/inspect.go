@@ -113,7 +113,7 @@ func InspectFile(ctx context.Context, dir, selected string) (Inspection, error) 
 		if err != nil {
 			return Inspection{}, err
 		}
-		defer reader.Close()
+		defer func() { _ = reader.Close() }()
 		data, err := io.ReadAll(io.LimitReader(reader, 16*1024+1))
 		if err != nil {
 			return Inspection{}, err
