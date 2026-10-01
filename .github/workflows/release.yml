@@ -1,0 +1,46 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify
+        run: |
+          go vet ./...
+          go test ./... -count=1
+      - name: Build archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          version="${GITHUB_REF_NAME#v}"
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            name="git-conflict-lab_${GITHUB_REF_NAME}_${os}_${arch}"
+            suffix=""
+            if [[ "$os" == windows ]]; then suffix=".exe"; fi
+            GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags="-s -w -X github.com/aslanchikop/git-conflict-lab/internal/cli.versionString=$version" -o "dist/git-conflict-lab${suffix}" ./cmd/git-conflict-lab
+            if [[ "$os" == windows ]]; then
+              (cd dist && zip -q "${name}.zip" "git-conflict-lab${suffix}")
+            else
+              tar -C dist -czf "dist/${name}.tar.gz" "git-conflict-lab${suffix}"
+            fi
+            rm "dist/git-conflict-lab${suffix}"
+          done
+          (cd dist && sha256sum *.zip *.tar.gz > SHA256SUMS)
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --generate-notes --title "Git Conflict Lab ${GITHUB_REF_NAME}"
